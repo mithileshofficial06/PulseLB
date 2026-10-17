@@ -79,6 +79,7 @@ type Config struct {
 	Mix         []Route
 	Timeout     time.Duration // per request
 	MaxInflight int           // cap on concurrent requests
+	MaxConns    int           // cap on open connections (2048)
 }
 
 // Counters are cumulative totals.
@@ -114,6 +115,9 @@ func New(cfg Config) *Generator {
 	if cfg.Timeout == 0 {
 		cfg.Timeout = 5 * time.Second
 	}
+	if cfg.MaxConns == 0 {
+		cfg.MaxConns = 2048
+	}
 	if cfg.MaxInflight == 0 {
 		cfg.MaxInflight = 20000
 	}
@@ -127,9 +131,12 @@ func New(cfg Config) *Generator {
 			Proxy:               nil,
 			DialContext:         (&net.Dialer{Timeout: 2 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
 			MaxIdleConns:        0,
-			MaxIdleConnsPerHost: cfg.MaxInflight,
-			IdleConnTimeout:     90 * time.Second,
-			DisableCompression:  true,
+			MaxIdleConnsPerHost: cfg.MaxConns,
+			// Requests beyond MaxConns wait for a free connection (and that
+			// wait counts in their latency) rather than opening new sockets.
+			MaxConnsPerHost:    cfg.MaxConns,
+			IdleConnTimeout:    90 * time.Second,
+			DisableCompression: true,
 		},
 	}
 	for _, r := range cfg.Mix {

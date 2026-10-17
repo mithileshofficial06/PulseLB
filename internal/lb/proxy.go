@@ -189,6 +189,11 @@ func (l *LB) recordOutcome(b *Backend, rtt time.Duration, failed bool) {
 
 // eject pulls a backend out of rotation for an exponentially growing time.
 func (l *LB) eject(b *Backend, now int64) {
+	// Failures from requests that were already in flight when b was
+	// ejected arrive afterwards; they don't count as a new ejection.
+	if b.ejectedUntil.Load() > now {
+		return
+	}
 	all := l.pool.All()
 	ejected := 0
 	for _, x := range all {

@@ -1,3 +1,125 @@
 <!doctype html>
-<title>PulseLB</title>
-<p>Dashboard coming soon. Live data: <a href="/api/summary">/api/summary</a></p>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PulseLB Control Room</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .layout { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 760px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+  .backends { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .be { display: flex; flex-direction: column; gap: 10px; }
+  .be.down, .be.ejected { border-color: color-mix(in srgb, var(--critical) 45%, var(--border)); }
+  .be .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .be .name { font-weight: 650; font-size: 15px; }
+  .be .badge { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border); }
+  .be .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; font-size: 12px; }
+  .be .stats b { display: block; font-size: 14px; font-weight: 600; }
+  .be .stats span { color: var(--muted); }
+  .be .chaos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .be .chaos button { font-size: 12px; padding: 4px 8px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; min-height: 20px; }
+  .chip { font-size: 11px; padding: 1px 8px; border-radius: 10px; background: color-mix(in srgb, var(--serious) 18%, transparent); color: var(--ink); }
+  .feat { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--border); align-items: center; }
+  .feat:first-of-type { border-top: 0; padding-top: 0; }
+  .feat b { font-weight: 600; }
+  .feat p { margin: 0; grid-column: 1; font-size: 12px; color: var(--muted); }
+  .switch { width: 42px; height: 24px; border-radius: 12px; padding: 0; position: relative; background: var(--axis); border: 0; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .switch.on { background: var(--good); }
+  .switch.on::after { left: 21px; }
+  .lane { display: grid; grid-template-columns: 74px 1fr 120px; gap: 10px; align-items: center; padding: 6px 0; font-size: 13px; }
+  .lane .nums { text-align: right; font-size: 12px; color: var(--ink-2); }
+  .traffic { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .offline { display: none; padding: 10px 14px; border-radius: 8px; background: color-mix(in srgb, var(--critical) 15%, transparent); margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="pulse" aria-hidden="true"></span>
+      <div>
+        <h1>PulseLB <span class="muted" style="font-weight:500">Control Room</span></h1>
+        <div class="tag" id="subtitle">Self-healing load balancer</div>
+      </div>
+    </div>
+    <div class="row">
+      <span class="tag">Routing</span>
+      <div class="seg" id="algo">
+        <button data-a="p2c" title="Power of two choices over latency">Smart (P2C)</button>
+        <button data-a="leastconn">Least conn</button>
+        <button data-a="rr">Round robin</button>
+      </div>
+      <a href="arena.html" class="tag" style="margin-left:8px">Race mode →</a>
+    </div>
+  </header>
+
+  <div class="offline" id="offline">Lost connection to PulseLB, retrying…</div>
+
+  <section class="card traffic" style="margin-bottom:14px">
+    <div class="row">
+      <h2 style="margin:0 8px 0 0">Traffic</h2>
+      <div class="seg" id="rates">
+        <button data-r="0">Off</button>
+        <button data-r="1000">1k/s</button>
+        <button data-r="5000">5k/s</button>
+        <button data-r="10000">10k/s</button>
+        <button data-r="15000">15k/s</button>
+      </div>
+      <select id="mix" aria-label="Traffic mix">
+        <option value="tatkal">Tatkal rush mix (20% book · 50% search · 30% browse)</option>
+        <option value="uniform">Uniform (all normal priority)</option>
+      </select>
+    </div>
+    <div class="tag" id="trafficNote">Built-in generator. For benchmark numbers use <code>blast</code>.</div>
+  </section>
+
+  <section class="tiles" style="margin-bottom:14px">
+    <div class="card tile"><div class="label">Served</div><div class="value num" id="kServed">–</div><div class="sub" id="kServedSub">requests / second</div></div>
+    <div class="card tile"><div class="label">Success rate</div><div class="value num" id="kSuccess">–</div><div class="sub" id="kSuccessSub">last second</div></div>
+    <div class="card tile"><div class="label">p99 latency</div><div class="value num" id="kP99">–</div><div class="sub" id="kP99Sub">target –</div></div>
+    <div class="card tile"><div class="label">Shed (protected)</div><div class="value num" id="kShed">–</div><div class="sub">low-priority / second</div></div>
+    <div class="card tile"><div class="label">In flight</div><div class="value num" id="kInflight">–</div><div class="sub" id="kLimit">limit –</div></div>
+    <div class="card tile"><div class="label">Servers</div><div class="value num" id="kServers">–</div><div class="sub" id="kServersSub">healthy</div></div>
+  </section>
+
+  <div class="grid layout">
+    <div class="grid">
+      <div class="grid charts">
+        <section class="card"><h2>Throughput</h2><div id="lgThroughput"></div><div id="cThroughput"></div></section>
+        <section class="card"><h2>Latency</h2><div id="lgLatency"></div><div id="cLatency"></div></section>
+      </div>
+      <section>
+        <div class="row" style="justify-content:space-between;margin:4px 0 10px">
+          <h2>Servers</h2>
+          <span class="tag">Break things on purpose and watch PulseLB react</span>
+        </div>
+        <div class="grid backends" id="backends"></div>
+      </section>
+      <section class="card">
+        <h2>Priority lanes</h2>
+        <p class="tag" style="margin:-6px 0 8px">Under overload PulseLB turns away browsing first and keeps bookings flowing.</p>
+        <div id="lanes"></div>
+      </section>
+    </div>
+    <div class="grid">
+      <section class="card">
+        <h2>Self-healing features</h2>
+        <div id="features"></div>
+      </section>
+      <section class="card">
+        <h2>Decision journal</h2>
+        <p class="tag" style="margin:-6px 0 6px">Why PulseLB did what it did, in plain English.</p>
+        <ul class="journal" id="journal" aria-live="polite"></ul>
+      </section>
+    </div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

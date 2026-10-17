@@ -36,7 +36,9 @@ type Options struct {
 	SLO            time.Duration // latency target driving load shedding (250ms)
 	MaxInflight    int64         // concurrency ceiling (4096)
 	MaxRetries     int           // extra attempts for idempotent requests (2)
-	SlowStart      time.Duration // ramp-up window after a backend joins (8s)
+
+	MaxConnsPerBackend int           // upstream connection cap per backend (512)
+	SlowStart          time.Duration // ramp-up window after a backend joins (8s)
 
 	EjectAfter  int           // consecutive failures before ejection (5)
 	EjectBase   time.Duration // first ejection length, doubling each time (5s)
@@ -74,6 +76,9 @@ func (o *Options) defaults() {
 	}
 	if o.MaxInflight == 0 {
 		o.MaxInflight = 4096
+	}
+	if o.MaxConnsPerBackend == 0 {
+		o.MaxConnsPerBackend = 512
 	}
 	if o.MaxRetries == 0 {
 		o.MaxRetries = 2
@@ -166,9 +171,14 @@ func New(opts Options) *LB {
 			// would open a new TCP connection for most requests, and at 10k
 			// req/s Windows runs out of ephemeral ports within seconds.
 			MaxIdleConns:        0,
-			MaxIdleConnsPerHost: 4096,
-			IdleConnTimeout:     90 * time.Second,
-			DisableCompression:  true,
+			MaxIdleConnsPerHost: opts.MaxConnsPerBackend,
+			// Cap connections per backend. When a backend slows down, extra
+			// requests wait for a pooled connection instead of each opening
+			// a new socket; an unbounded connection storm exhausts OS
+			// threads and ports and takes the balancer down with it.
+			MaxConnsPerHost:    opts.MaxConnsPerBackend,
+			IdleConnTimeout:    90 * time.Second,
+			DisableCompression: true,
 		},
 		health: &http.Client{
 			Timeout: opts.HealthTimeout,

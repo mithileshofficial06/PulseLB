@@ -25,6 +25,7 @@ import (
 
 	"github.com/mithileshofficial06/pulselb/internal/backendsim"
 	"github.com/mithileshofficial06/pulselb/internal/lb"
+	"github.com/mithileshofficial06/pulselb/internal/loadgen"
 	"github.com/mithileshofficial06/pulselb/internal/web"
 )
 
@@ -92,6 +93,11 @@ func main() {
 
 	adminMux := http.NewServeMux()
 	adminMux.Handle("/api/", balancer.AdminAPI())
+	// The built-in traffic generator lets the dashboard start a load test
+	// with one click. For benchmark numbers, run blast as its own process.
+	traffic := loadgen.NewController("http://" + *listen)
+	defer traffic.Stop()
+	adminMux.Handle("/api/traffic", traffic.Handler())
 	adminMux.Handle("/", web.Handler())
 
 	proxy := &http.Server{
