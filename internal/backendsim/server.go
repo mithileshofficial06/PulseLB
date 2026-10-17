@@ -132,16 +132,16 @@ func (s *Server) Reset() {
 
 // State is the chaos and load state reported by /__pulse/chaos.
 type State struct {
-	Name       string  `json:"name"`
-	Addr       string  `json:"addr"`
-	DelayMs    float64 `json:"delay_ms"`
-	ErrorRate  float64 `json:"error_rate"`
-	Down       bool    `json:"down"`
-	Crashed    bool    `json:"crashed"`
-	Served     uint64  `json:"served"`
-	Inflight   int64   `json:"inflight"`
-	Capacity   int     `json:"capacity"`
-	BaseLatMs  float64 `json:"base_latency_ms"`
+	Name      string  `json:"name"`
+	Addr      string  `json:"addr"`
+	DelayMs   float64 `json:"delay_ms"`
+	ErrorRate float64 `json:"error_rate"`
+	Down      bool    `json:"down"`
+	Crashed   bool    `json:"crashed"`
+	Served    uint64  `json:"served"`
+	Inflight  int64   `json:"inflight"`
+	Capacity  int     `json:"capacity"`
+	BaseLatMs float64 `json:"base_latency_ms"`
 }
 
 // State returns a snapshot of the server's chaos settings and counters.
