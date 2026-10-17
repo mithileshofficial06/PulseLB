@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mithileshofficial06/pulselb/internal/backendsim"
+	"github.com/mithileshofficial06/pulselb/internal/perf"
 )
 
 func main() {
@@ -23,6 +24,9 @@ func main() {
 	jitter := flag.Duration("jitter", 2*time.Millisecond, "random +/- jitter on the service time")
 	capacity := flag.Int("capacity", 0, "concurrent worker slots per server (0 = unlimited)")
 	flag.Parse()
+	if err := perf.DisablePowerThrottling(); err != nil {
+		log.Printf("could not opt out of OS power throttling: %v", err)
+	}
 
 	var servers []*backendsim.Server
 	list := strings.Split(*ports, ",")

@@ -22,6 +22,7 @@ import (
 	"github.com/mithileshofficial06/pulselb/internal/backendsim"
 	"github.com/mithileshofficial06/pulselb/internal/lb"
 	"github.com/mithileshofficial06/pulselb/internal/loadgen"
+	"github.com/mithileshofficial06/pulselb/internal/perf"
 	"github.com/mithileshofficial06/pulselb/internal/web"
 )
 
@@ -49,6 +50,9 @@ func main() {
 	race := flag.Bool("race", false, "run the Tatkal Rush once without a browser, print the scoreboard and exit")
 	out := flag.String("json", "", "with -race: also write the scoreboard to this JSON file")
 	flag.Parse()
+	if err := perf.DisablePowerThrottling(); err != nil {
+		log.Printf("could not opt out of OS power throttling: %v", err)
+	}
 
 	tmpl := backendsim.Config{Latency: *latency, Jitter: *latency / 4, Capacity: *capacity, QueueTimeout: time.Second}
 	a := &arena{peak: *peak}

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/mithileshofficial06/pulselb/internal/loadgen"
+	"github.com/mithileshofficial06/pulselb/internal/perf"
 )
 
 type second struct {
@@ -65,7 +66,11 @@ func main() {
 	timeout := flag.Duration("timeout", 5*time.Second, "per-request timeout")
 	maxInflight := flag.Int("max-inflight", 20000, "max concurrent requests")
 	out := flag.String("json", "", "write the full result to this JSON file")
+	warm := flag.Int("warm", 500, "keep-alive connections to open before the test (0 = none)")
 	flag.Parse()
+	if err := perf.DisablePowerThrottling(); err != nil {
+		log.Printf("could not opt out of OS power throttling: %v", err)
+	}
 
 	mix, err := loadgen.ParseMix(*mixFlag)
 	if err != nil {
@@ -83,6 +88,12 @@ func main() {
 
 	fmt.Printf("blast: %s at %.0f req/s for %s (ramp %s, mix %s)\n\n", *target, *rate, *duration, *ramp, *mixFlag)
 	fmt.Printf("%5s %8s %8s %8s %7s %7s %9s %9s\n", "t", "target", "sent", "ok", "shed", "errors", "p50", "p99")
+
+	if *warm > 0 {
+		t0 := time.Now()
+		g.Warm(ctx, *warm)
+		fmt.Printf("warmed %d connections in %s\n\n", *warm, time.Since(t0).Round(time.Millisecond))
+	}
 
 	done := make(chan struct{})
 	start := time.Now()

@@ -193,6 +193,46 @@ func (g *Generator) Counters() Counters {
 // Mix returns the routes this generator sends.
 func (g *Generator) Mix() []Route { return g.cfg.Mix }
 
+// Warm opens n keep-alive connections to the target before the test, in
+// batches of 50. Without it, the first burst of traffic (or any later
+// latency hiccup) makes the client open hundreds of connections in the same
+// instant, which overflows the listen backlog -- about 200 on Windows client
+// editions -- and shows up as refused connections that have nothing to do
+// with the balancer. Warm-up requests are not counted in the results.
+func (g *Generator) Warm(ctx context.Context, n int) {
+	if n > g.cfg.MaxConns {
+		n = g.cfg.MaxConns
+	}
+	// Hold every connection until all n are open, so they really are n
+	// separate connections, then release them into the idle pool together.
+	release := make(chan struct{})
+	var wg sync.WaitGroup
+	for done := 0; done < n && ctx.Err() == nil; {
+		batch := min(50, n-done)
+		var bw sync.WaitGroup
+		for i := 0; i < batch; i++ {
+			wg.Add(1)
+			bw.Add(1)
+			go func() {
+				defer wg.Done()
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, g.cfg.Target+g.cfg.Mix[0].Path, nil)
+				resp, err := g.client.Do(req)
+				bw.Done()
+				if err != nil {
+					return
+				}
+				io.Copy(io.Discard, resp.Body)
+				<-release
+				resp.Body.Close()
+			}()
+		}
+		bw.Wait()
+		done += batch
+	}
+	close(release)
+	wg.Wait()
+}
+
 // Run sends traffic until Duration elapses or ctx is cancelled, then waits
 // for outstanding requests.
 func (g *Generator) Run(ctx context.Context) {

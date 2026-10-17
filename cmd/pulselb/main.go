@@ -26,6 +26,7 @@ import (
 	"github.com/mithileshofficial06/pulselb/internal/backendsim"
 	"github.com/mithileshofficial06/pulselb/internal/lb"
 	"github.com/mithileshofficial06/pulselb/internal/loadgen"
+	"github.com/mithileshofficial06/pulselb/internal/perf"
 	"github.com/mithileshofficial06/pulselb/internal/web"
 )
 
@@ -41,6 +42,9 @@ func main() {
 	demoCap := flag.Int("demo-capacity", 64, "worker slots per demo backend (64 slots / 10ms = 6,400 req/s each)")
 	spawn := flag.String("spawn", "", "path to the backend binary, enables autoscaling with real processes")
 	flag.Parse()
+	if err := perf.DisablePowerThrottling(); err != nil {
+		log.Printf("could not opt out of OS power throttling: %v", err)
+	}
 
 	opts := lb.Options{Algorithm: *algo, Smart: !*classic, SLO: *slo, Name: "PulseLB"}
 	if *classic {
