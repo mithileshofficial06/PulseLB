@@ -170,10 +170,15 @@
       else [px, py] = curve(d.s, d.t, d.jitter);
       const col = d.stage === 1 && d.s.state === "down" ? C.red : d.stage === 1 && d.s.state === "slow" ? C.amber : d.hue > 0.5 ? C.mint : C.blue;
       x.fillStyle = col;
-      x.shadowColor = col; x.shadowBlur = 8 * GLOW;
-      x.beginPath();
-      if (GLOW) x.arc(px, py, 2.4, 0, Math.PI * 2); else x.rect(px - 2.5, py - 2.5, 5, 5);
-      x.fill();
+      if (GLOW) {
+        // A translucent halo instead of shadowBlur: same look, a fraction of the cost.
+        x.globalAlpha = 0.18;
+        x.beginPath(); x.arc(px, py, 6, 0, Math.PI * 2); x.fill();
+        x.globalAlpha = 1;
+        x.beginPath(); x.arc(px, py, 2.4, 0, Math.PI * 2); x.fill();
+      } else {
+        x.fillRect(px - 2.5, py - 2.5, 5, 5);
+      }
     }
     x.shadowBlur = 0;
 

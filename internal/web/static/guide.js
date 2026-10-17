@@ -55,7 +55,7 @@
     dashboard: [
       { sel: ".brand", title: "The control room", say: "Welcome to the control room. Everything here is live. I'll drive this demo myself, so just watch. You can pause or skip me at any time." },
       { sel: "#trafficCard", title: "Traffic on", before: () => A().traffic && A().traffic(5000, "tatkal"),
-        say: "First, I'm switching on five thousand requests per second, using the Tatkal mix: twenty percent bookings, fifty percent searches and thirty percent browsing.", wait: 3500 },
+        say: "First, I'm switching on five thousand requests per second, using the Tatkal mix: twenty percent bookings, fifty percent searches and thirty percent browsing.", wait: 2200 },
       { sel: "#nowBanner", title: "Right now", say: () => {
         const m = (document.getElementById("nowMsg") || {}).textContent || "";
         return `This line sums up the whole page in plain English, every second. Right now it says: ${m}`;
@@ -69,7 +69,7 @@
       { sel: "#latCard", title: "Latency", say: "This one shows response time. The dashed line is the target of two hundred and fifty milliseconds. If latency crosses it, PulseLB starts protecting bookings." },
       { sel: "#backends", title: "Three servers", say: "These are the three servers. The blue bar is each server's share of traffic. While they're equally fast, smart routing keeps them roughly equal." },
       { sel: '[data-be="backend-2"]', title: "Breaking backend-2", before: () => A().chaos && A().chaos("backend-2", "delay=300"),
-        say: "Now I'm breaking backend two. Every request it handles takes three hundred extra milliseconds, but it still passes health checks. A normal load balancer would never notice.", wait: 5000 },
+        say: "Now I'm breaking backend two. Every request it handles takes three hundred extra milliseconds, but it still passes health checks. A normal load balancer would never notice.", wait: 3000 },
       { sel: '[data-be="backend-2"]', title: "Routed around", say: () => {
         const b = backend("backend-2");
         return `Look at backend two now. Its share of traffic has dropped to ${say.pct((b.share || 0) * 100)}. PulseLB measured it at ${say.ms(b.ewma)} and moved the work to the fast servers. Nobody touched anything.`;
@@ -79,7 +79,7 @@
         return "This is the decision journal. It explains every decision in plain English." + (m ? ` The latest one says: ${m}` : "");
       } },
       { sel: '[data-be="backend-3"]', title: "Crashing backend-3", before: () => A().chaos && A().chaos("backend-3", "crash=25"),
-        say: "Now something worse. I've just crashed backend three completely. Watch what happens.", wait: 6000 },
+        say: "Now something worse. I've just crashed backend three completely. Watch what happens.", wait: 4000 },
       { sel: "#serversSection", title: "Self-healing", say: () => {
         const bs = point().backends || [];
         const up = bs.filter((b) => b.state === "healthy" || b.state === "warming").length;
@@ -258,18 +258,17 @@
     });
     addEventListener("resize", place);
     addEventListener("scroll", place, { passive: true });
-    (function frame() { place(); requestAnimationFrame(frame); })();
 
     setText("Press ▶ Play and I'll walk you through this page out loud. Or ask me a question below.");
     const auto = new URLSearchParams(location.search).get("tour");
-    setTimeout(() => {
+    (window.PULSE_BOOT || Promise.resolve()).then(() => setTimeout(() => {
       if (auto) { openPanel(false); setText("Ready when you are. Press ▶ Play to start."); return; }
       if (!G.open && !sessionStorageGet("pg-hello-" + PAGE)) {
         hello.classList.add("open");
         bot.classList.add("hello");
         sessionStorageSet("pg-hello-" + PAGE, "1");
       }
-    }, 1200);
+    }, 1200));
   }
 
   function setTalking(on) { bot.classList.toggle("talking", on); panel.classList.toggle("talking", on); }
@@ -288,17 +287,38 @@
     if (!t) { spotEl.classList.remove("on", "pulse"); return; }
     t.scrollIntoView({ behavior: "smooth", block: t.offsetHeight > innerHeight * 0.7 ? "start" : "center" });
     spotEl.classList.add("on", "pulse");
-    place();
+    follow();
   }
+  // follow keeps the spotlight on its target only while the page is still
+  // moving (smooth scroll, live content resizing), then stops polling.
+  let followUntil = 0, following = false;
+  function follow() {
+    followUntil = performance.now() + 1500;
+    if (following) return;
+    following = true;
+    const tick = () => {
+      place();
+      if (performance.now() < followUntil && curTarget) requestAnimationFrame(tick);
+      else following = false;
+    };
+    requestAnimationFrame(tick);
+  }
+  let lastRect = "";
   function place() {
     if (!curTarget || !spotEl.classList.contains("on")) return;
     const r = curTarget.getBoundingClientRect(), pad = 10;
-    spotEl.style.left = r.left - pad + "px";
-    spotEl.style.top = r.top - pad + "px";
+    const h = Math.min(r.height + pad * 2, innerHeight * 1.5);
+    const key = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(h)}`;
+    if (key === lastRect) return; // nothing moved: no style writes, no repaint
+    lastRect = key;
+    // Move with a transform (compositor only) and size with width/height.
+    spotEl.style.transform = `translate3d(${r.left - pad}px, ${r.top - pad}px, 0)`;
     spotEl.style.width = r.width + pad * 2 + "px";
-    spotEl.style.height = Math.min(r.height + pad * 2, innerHeight * 1.5) + "px";
+    spotEl.style.height = h + "px";
     spotEl.classList.toggle("below-label", r.top < 110);
   }
+  // Live pages change size every second; re-check now and then.
+  setInterval(() => { if (curTarget) place(); }, 500);
 
   // ---------- speech with word highlighting ----------
   let voice = null;
@@ -324,79 +344,86 @@
     }
     return words;
   }
+  // mark moves the highlight to word idx. Only the words whose state
+  // actually changes are touched, so a long paragraph stays cheap.
   function mark(words, idx) {
-    words.forEach((w, j) => { w.span.className = j < idx ? "said" : j === idx ? "now" : "todo"; });
+    const prev = words.cur ?? -1;
+    if (idx === prev) return;
+    const lo = Math.max(0, Math.min(prev, idx)), hi = Math.min(words.length - 1, Math.max(prev, idx));
+    for (let j = lo; j <= hi; j++) {
+      const cls = j < idx ? "said" : j === idx ? "now" : "todo";
+      if (words[j].span.className !== cls) words[j].span.className = cls;
+    }
+    words.cur = idx;
   }
 
-  // speak resolves when the text has been read (or the tour moved on).
+  // speak reads a whole step as ONE utterance, so there is no gap between
+  // sentences (with online voices every utterance costs a network round
+  // trip, which is what made the old sentence-by-sentence reading choppy).
+  // It resolves when the text has been read, or the tour moved on.
   function speak(text, tok) {
     const words = setText(text);
+    words.cur = -1;
     setTalking(true);
-    const done = () => { if (tok === G.tok) { mark(words, words.length); setTalking(false); } };
-    // Split into sentences: long utterances get cut off in some browsers.
-    const sentences = [];
-    const re = /[^.!?]+[.!?]*\s*/g;
-    let m;
-    while ((m = re.exec(text))) sentences.push({ text: m[0], start: m.index });
-    return (async () => {
-      for (const s of sentences) {
-        if (tok !== G.tok) return;
-        await speakSentence(s, words, tok);
-      }
-      done();
-    })();
-  }
+    const finish = () => { if (tok === G.tok) { mark(words, words.length); setTalking(false); } };
+    const est = Math.max(1200, words.length * 300); // ~200 words a minute
 
-  function speakSentence(s, words, tok) {
-    const first = words.findIndex((w) => w.start >= s.start);
-    const last = words.findIndex((w) => w.start >= s.start + s.text.length);
-    const sw = words.slice(first, last < 0 ? words.length : last);
-    const est = Math.max(900, sw.length * 330);
-    // Timer-based highlighting: used when muted, when speech isn't
-    // available, or when the voice doesn't report word boundaries.
-    const timed = (resolve) => {
-      let k = 0;
-      const step = est / Math.max(1, sw.length);
-      const iv = setInterval(() => {
-        if (tok !== G.tok) { clearInterval(iv); resolve(); return; }
-        if (k >= sw.length) { clearInterval(iv); resolve(); return; }
-        mark(words, first + k++);
-      }, step);
+    // Highlight by timing: used when muted, without speech, or when the
+    // voice doesn't report word boundaries.
+    const timed = (from, resolve) => {
+      const t0 = performance.now(), per = est / Math.max(1, words.length);
+      const tick = () => {
+        if (tok !== G.tok) return resolve();
+        const k = from + Math.floor((performance.now() - t0) / per);
+        if (k >= words.length) {
+          // If a voice is still talking, let its end event finish the step.
+          if (!synth || G.muted || !synth.speaking) finish(); else mark(words, words.length - 1);
+          return resolve();
+        }
+        mark(words, k);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
     };
-    if (G.muted || !synth) return new Promise((r) => timed(r));
+    if (G.muted || !synth) return new Promise((r) => timed(0, r));
+
     return new Promise((resolve) => {
-      const u = new SpeechSynthesisUtterance(s.text.trim());
+      const u = new SpeechSynthesisUtterance(text);
       if (voice) { u.voice = voice; u.lang = voice.lang; }
-      u.rate = 1.03;
-      let gotBoundary = false, finished = false, fallback = null;
+      u.rate = 1.08;
+      let gotBoundary = false, done = false, fallbackOn = false;
       const t0 = performance.now();
       const end = () => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(guard); clearTimeout(fb); clearInterval(fallback);
-        // A voice that "finishes" far faster than a person could read the
-        // sentence didn't really speak (no voice installed, blocked audio):
-        // keep reading pace with the timed highlighter instead.
-        if (!gotBoundary && performance.now() - t0 < est * 0.3) timed(resolve);
-        else resolve();
+        if (done) return;
+        done = true;
+        clearTimeout(guard); clearTimeout(fb); clearInterval(keep);
+        // "Finished" far faster than anyone could read it: no voice really
+        // spoke (none installed, audio blocked). Keep pace by timing instead.
+        if (!gotBoundary && performance.now() - t0 < est * 0.25) return timed(0, resolve);
+        finish();
+        resolve();
       };
       u.onboundary = (e) => {
         if (e.name && e.name !== "word") return;
         gotBoundary = true;
-        const abs = s.start + e.charIndex;
-        const j = words.findIndex((w) => abs >= w.start && abs < w.end + 1);
-        if (j >= 0) mark(words, j);
+        let j = words.cur < 0 ? 0 : words.cur;
+        while (j < words.length - 1 && words[j].end <= e.charIndex) j++;
+        mark(words, j);
       };
       u.onend = end;
       u.onerror = end;
-      // Some voices never report boundaries: fall back to timing.
+      // Voice gives no word positions within ~700ms: highlight by timing.
       const fb = setTimeout(() => {
-        if (gotBoundary || finished) return;
-        let k = 0;
-        fallback = setInterval(() => { if (k < sw.length) mark(words, first + k++); }, est / Math.max(1, sw.length));
-      }, 600);
+        if (gotBoundary || done || fallbackOn) return;
+        fallbackOn = true;
+        timed(0, () => {});
+      }, 700);
+      // Chrome's Google voices stop after ~15s unless nudged.
+      const keep = /google/i.test((voice && voice.name) || "")
+        ? setInterval(() => { if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); } }, 9000)
+        : 0;
       // And some browsers occasionally never fire onend.
-      const guard = setTimeout(end, est * 2.2 + 4000);
+      const guard = setTimeout(end, est * 2 + 5000);
       synth.speak(u);
     });
   }
@@ -422,7 +449,7 @@
       spot(st.sel, st.title);
       try {
         if (st.run) { await st.run(tok); } else {
-          if (st.before) { await st.before(); await sleep(400); }
+          if (st.before) { await st.before(); await sleep(200); }
           if (tok !== G.tok) return;
           const text = typeof st.say === "function" ? st.say() : st.say;
           await speak(text, tok);
@@ -432,7 +459,7 @@
         console.warn("guide step failed", err);
       }
       if (tok !== G.tok) return;
-      await sleep(450);
+      await sleep(220);
       if (tok !== G.tok) return;
       G.i++;
     }

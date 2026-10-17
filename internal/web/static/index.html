@@ -131,6 +131,7 @@
 
   footer { border-top: 1px solid var(--line); padding-top: 24px; margin-top: 90px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 </style>
+<link rel="stylesheet" href="motion.css">
 <link rel="stylesheet" href="brutal.css">
 <script>
   // Pick the skin before first paint: brutal by default, remembered per browser.
@@ -138,10 +139,24 @@
     var s = "brutal";
     try { s = localStorage.getItem("pulselb-skin") || s; } catch (e) {}
     document.documentElement.dataset.skin = s;
+    document.documentElement.classList.add("booting");
   })();
 </script>
 </head>
 <body data-page="home">
+<div id="boot" role="status" aria-label="Loading PulseLB">
+  <div class="boot-inner">
+    <div class="boot-mark"><span class="ring"></span><span class="ring"></span><span class="ring"></span>
+      <div class="core"><svg viewBox="0 0 64 32" aria-hidden="true"><path d="M2 16h14l5-12 9 26 7-20 4 6h21"/></svg></div>
+    </div>
+    <div class="boot-word"><span style="--i:0">P</span><span style="--i:1">u</span><span style="--i:2">l</span><span style="--i:3">s</span><span style="--i:4">e</span><span style="--i:5">L</span><span style="--i:6">B</span></div>
+    <div class="boot-sub">self-healing load balancer</div>
+    <div class="boot-bar"><i></i></div>
+    <ul class="boot-log"></ul>
+  </div>
+  <button class="boot-skip" type="button">Skip</button>
+</div>
+
 <nav class="topnav">
   <a class="logo" href="index.html"><span class="pulse" aria-hidden="true"></span>PulseLB</a>
   <div class="links">
@@ -156,22 +171,33 @@
 
 <div class="wrap">
   <section class="hero-grid" id="hero">
+    <div class="floaters" aria-hidden="true">
+      <i style="--x:4%;--y:8%;--s:46px;--z:14;--t:8s"></i>
+      <i class="sq" style="--x:44%;--y:2%;--s:28px;--z:-10;--t:10s;--c:rgba(91,157,255,.45)"></i>
+      <i class="plus" style="--x:36%;--y:70%;--s:22px;--z:18;--t:7s"></i>
+      <i style="--x:92%;--y:4%;--s:70px;--z:-16;--t:12s;--c:rgba(91,157,255,.3)"></i>
+      <i class="sq" style="--x:56%;--y:86%;--s:34px;--z:12;--t:9s"></i>
+      <i class="plus" style="--x:2%;--y:84%;--s:26px;--z:-12;--t:11s;--c:rgba(255,138,76,.55)"></i>
+      <i style="--x:24%;--y:40%;--s:14px;--z:24;--t:6s;--c:rgba(255,138,76,.5)"></i>
+      <i class="sq" style="--x:96%;--y:72%;--s:20px;--z:20;--t:8s"></i>
+    </div>
     <div>
       <span class="eyebrow fade-up"><span class="dot"></span>Load balancer · built from scratch in Go</span>
-      <h1 class="huge fade-up" style="--d:.08s">Survives the <span class="grad">Tatkal rush.</span></h1>
+      <h1 class="huge" data-split>Survives the <span class="grad">Tatkal rush.</span></h1>
+      <div class="rotator fade-up" style="--d:.5s">Keeps users happy when <span class="slot" data-rotate="a server gets slow|a server crashes|traffic triples|everyone clicks Book"></span></div>
       <p class="lede fade-up" style="--d:.16s">PulseLB routes around slow servers, heals itself when one dies, protects bookings when traffic outruns capacity, explains every decision in plain English, and proves it all in a live race against a classic round-robin balancer.</p>
       <div class="cta fade-up" style="--d:.24s">
-        <button class="btn primary" data-guide-start>▶ Take the voice tour</button>
-        <a class="btn" href="dashboard.html">Open control room →</a>
-        <a class="btn" href="arena.html">Watch the race →</a>
+        <button class="btn primary" data-guide-start data-magnetic>▶ Take the voice tour</button>
+        <a class="btn" href="dashboard.html" data-magnetic>Open control room →</a>
+        <a class="btn" href="arena.html" data-magnetic>Watch the race →</a>
       </div>
       <div class="status-row fade-up" style="--d:.32s">
         <span class="live" id="liveLB">Control room</span>
         <span class="live" id="liveArena">Race mode</span>
       </div>
     </div>
-    <div class="card sim-card fade-up" style="--d:.2s" id="simCard">
-      <div class="sim-head"><span class="dots"><i></i><i></i><i></i></span><span>Live routing simulation</span><span class="rec">LIVE</span></div>
+    <div class="card sim-card fade-up" style="--d:.2s" id="simCard" data-tilt="5">
+      <div class="sim-head"><span class="dots"><i></i><i></i><i></i></span><span>How PulseLB routes · animation</span><span class="rec">SIMULATED</span></div>
       <canvas id="sim" aria-label="Animation: PulseLB routing requests from users to servers, rerouting around a slow server and a crashed one"></canvas>
       <p class="sim-cap" id="simCaption" aria-live="polite">Normal traffic · P2C spreads the load evenly</p>
     </div>
@@ -189,9 +215,9 @@
 
   <div class="stats">
     <div class="card stat" data-reveal><b data-count="9997">0</b><span>requests / second sustained · blast, 60 s</span></div>
-    <div class="card stat" data-reveal style="--d:.08s"><b data-count="0">0</b><span>failed requests · k6, 60 s, 599,637 sent</span></div>
-    <div class="card stat" data-reveal style="--d:.16s"><b data-count="99.8" data-decimals="1" data-suffix="%">0</b><span>Tatkal bookings completed in the race</span></div>
-    <div class="card stat" data-reveal style="--d:.24s"><b data-count="8.7" data-decimals="1" data-suffix="ms">0</b><span>p99 latency at 10k req/s · k6</span></div>
+    <div class="card stat" data-reveal style="--d:.8s"><b data-count="0">0</b><span>failed requests · k6, 60 s, 599,637 sent</span></div>
+    <div class="card stat" data-reveal style="--d:1.6s"><b data-count="99.8" data-decimals="1" data-suffix="%">0</b><span>Tatkal bookings completed in the race</span></div>
+    <div class="card stat" data-reveal style="--d:2.4s"><b data-count="8.7" data-decimals="1" data-suffix="ms">0</b><span>p99 latency at 10k req/s · k6</span></div>
   </div>
 
   <section class="block" id="problem">
@@ -217,12 +243,13 @@
     <span class="eyebrow" data-reveal>How a request flows</span>
     <h2 class="h2big" data-reveal>Six steps. Every request. <span class="soft">In about a millisecond.</span></h2>
     <div class="flow">
-      <div class="st" data-reveal><div class="n">01</div><h3>Classify</h3><p>/book and /pay are critical, /browse is low priority.</p></div>
-      <div class="st" data-reveal style="--d:.08s"><div class="n">02</div><h3>Admit</h3><p>Over the limit? A fast, polite 503, browsing first.</p></div>
-      <div class="st" data-reveal style="--d:.16s"><div class="n">03</div><h3>Pick</h3><p>Compare two servers' live speed, choose the faster.</p></div>
-      <div class="st" data-reveal style="--d:.24s"><div class="n">04</div><h3>Forward</h3><p>Pooled connections, clean headers, streamed reply.</p></div>
-      <div class="st" data-reveal style="--d:.32s"><div class="n">05</div><h3>Learn</h3><p>The response time updates that server's score.</p></div>
-      <div class="st" data-reveal style="--d:.4s"><div class="n">06</div><h3>Retry</h3><p>Failed reads go to a different server, within a budget.</p></div>
+      <span class="packet" aria-hidden="true"></span>
+      <div class="st" data-reveal style="--i:0"><div class="n">01</div><h3>Classify</h3><p>/book and /pay are critical, /browse is low priority.</p></div>
+      <div class="st" data-reveal style="--d:.08s;--i:1"><div class="n">02</div><h3>Admit</h3><p>Over the limit? A fast, polite 503, browsing first.</p></div>
+      <div class="st" data-reveal style="--d:.16s;--i:2"><div class="n">03</div><h3>Pick</h3><p>Compare two servers' live speed, choose the faster.</p></div>
+      <div class="st" data-reveal style="--d:.24s;--i:3"><div class="n">04</div><h3>Forward</h3><p>Pooled connections, clean headers, streamed reply.</p></div>
+      <div class="st" data-reveal style="--d:.32s;--i:4"><div class="n">05</div><h3>Learn</h3><p>The response time updates that server's score.</p></div>
+      <div class="st" data-reveal style="--d:.4s;--i:5"><div class="n">06</div><h3>Retry</h3><p>Failed reads go to a different server, within a budget.</p></div>
     </div>
   </section>
 
@@ -230,12 +257,12 @@
     <span class="eyebrow" data-reveal>Self-healing</span>
     <h2 class="h2big" data-reveal>It fixes itself. <span class="soft">Then it tells you why.</span></h2>
     <div class="feats">
-      <div class="card feat-card" data-reveal><div class="ico">⇄</div><h3>Smart routing</h3><p>Power-of-two-choices over live latency (P2C-EWMA), the idea behind Linkerd and Twitter's Finagle. A slow server drops to ~1% of traffic within a second.</p></div>
-      <div class="card feat-card" data-reveal style="--d:.08s"><div class="ico">⏏</div><h3>Instant ejection</h3><p>5 failures in a row and the server is out, in milliseconds instead of seconds. Never more than half the fleet.</p></div>
-      <div class="card feat-card" data-reveal style="--d:.16s"><div class="ico">↗</div><h3>Slow start</h3><p>A recovered server earns its traffic back over 8 seconds instead of being flooded and falling over again.</p></div>
-      <div class="card feat-card" data-reveal><div class="ico">↻</div><h3>Smart retries</h3><p>Failed reads are retried elsewhere, capped at ~20% extra load so retries can never snowball into a storm.</p></div>
-      <div class="card feat-card" data-reveal style="--d:.08s"><div class="ico">⚑</div><h3>Priority shedding</h3><p>When latency passes the target, browsing is turned away first. Bookings and payments keep flowing.</p></div>
-      <div class="card feat-card" data-reveal style="--d:.16s"><div class="ico">＋</div><h3>Autoscale</h3><p>Dead servers are replaced and extra ones launched during the rush, then drained and retired when it ends.</p></div>
+      <div class="card feat-card" data-tilt="8" data-reveal><div class="ico">⇄</div><h3>Smart routing</h3><p>Power-of-two-choices over live latency (P2C-EWMA), the idea behind Linkerd and Twitter's Finagle. A slow server drops to ~1% of traffic within a second.</p></div>
+      <div class="card feat-card" data-tilt="8" data-reveal style="--d:.08s"><div class="ico">⏏</div><h3>Instant ejection</h3><p>5 failures in a row and the server is out, in milliseconds instead of seconds. Never more than half the fleet.</p></div>
+      <div class="card feat-card" data-tilt="8" data-reveal style="--d:.16s"><div class="ico">↗</div><h3>Slow start</h3><p>A recovered server earns its traffic back over 8 seconds instead of being flooded and falling over again.</p></div>
+      <div class="card feat-card" data-tilt="8" data-reveal><div class="ico">↻</div><h3>Smart retries</h3><p>Failed reads are retried elsewhere, capped at ~20% extra load so retries can never snowball into a storm.</p></div>
+      <div class="card feat-card" data-tilt="8" data-reveal style="--d:.08s"><div class="ico">⚑</div><h3>Priority shedding</h3><p>When latency passes the target, browsing is turned away first. Bookings and payments keep flowing.</p></div>
+      <div class="card feat-card" data-tilt="8" data-reveal style="--d:.16s"><div class="ico">＋</div><h3>Autoscale</h3><p>Dead servers are replaced and extra ones launched during the rush, then drained and retired when it ends.</p></div>
     </div>
     <div class="card journal-quote" data-reveal id="quoteCard">
       <div class="ic">▲</div>
@@ -251,18 +278,18 @@
         <h2>Race mode · same traffic, same failures · 3 runs</h2>
         <div class="metric">
           <div class="lbl"><span>Tatkal bookings completed</span><span>higher is better</span></div>
-          <div class="vsbar c"><span>Classic</span><div class="track"><div class="fill" style="--w:77.6%"></div></div><b>77.6%</b></div>
-          <div class="vsbar p"><span>PulseLB</span><div class="track"><div class="fill" style="--w:99.8%;--d:.2s"></div></div><b>99.8%</b></div>
+          <div class="vsbar c"><span>Classic</span><div class="track"><div class="fill" style="--w:77.6%"></div></div><b data-count="77.6" data-decimals="1" data-suffix="%">77.6%</b></div>
+          <div class="vsbar p"><span>PulseLB</span><div class="track"><div class="fill" style="--w:99.8%;--d:.2s"></div></div><b data-count="99.8" data-decimals="1" data-suffix="%">99.8%</b></div>
         </div>
         <div class="metric">
           <div class="lbl"><span>Failed requests</span><span>lower is better</span></div>
-          <div class="vsbar c"><span>Classic</span><div class="track"><div class="fill" style="--w:100%"></div></div><b>32,200</b></div>
+          <div class="vsbar c"><span>Classic</span><div class="track"><div class="fill" style="--w:100%"></div></div><b data-count="32200">32,200</b></div>
           <div class="vsbar p"><span>PulseLB</span><div class="track"><div class="fill" style="--w:0.5%;--d:.2s"></div></div><b>0</b></div>
         </div>
         <div class="metric" style="margin-bottom:0">
           <div class="lbl"><span>p99 latency</span><span>lower is better</span></div>
           <div class="vsbar c"><span>Classic</span><div class="track"><div class="fill" style="--w:100%"></div></div><b>4.8 s</b></div>
-          <div class="vsbar p"><span>PulseLB</span><div class="track"><div class="fill" style="--w:5.4%;--d:.2s"></div></div><b>260ms</b></div>
+          <div class="vsbar p"><span>PulseLB</span><div class="track"><div class="fill" style="--w:5.4%;--d:.2s"></div></div><b data-count="260" data-suffix="ms">260ms</b></div>
         </div>
       </div>
       <div class="card bench" data-reveal style="--d:.1s">
@@ -275,6 +302,10 @@
       </div>
     </div>
   </section>
+
+  <div class="marquee rev" aria-hidden="true"><div>
+    ✦ run it yourself ✦ bin\demo.exe ✦ open 127.0.0.1:9000 ✦ press the voice tour ✦ break a server ✦ watch it heal ✦ run it yourself ✦ bin\demo.exe ✦ open 127.0.0.1:9000 ✦ press the voice tour ✦ break a server ✦ watch it heal
+  </div></div>
 
   <section class="block" id="demo">
     <span class="eyebrow" data-reveal>See it yourself</span>
@@ -294,6 +325,7 @@ bin\blast.exe -rate 10000</pre></div>
   </footer>
 </div>
 <script src="common.js"></script>
+<script src="motion.js"></script>
 <script src="traffic.js"></script>
 <script>
   // Which parts of the demo are running in this process?

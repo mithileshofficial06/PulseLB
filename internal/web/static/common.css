@@ -81,6 +81,7 @@ body::after {
     radial-gradient(40% 35% at 20% 10%, rgba(61, 220, 151, .10), transparent 70%),
     radial-gradient(35% 30% at 85% 20%, rgba(91, 157, 255, .10), transparent 70%);
   animation: drift 26s ease-in-out infinite alternate;
+  will-change: transform;
 }
 @keyframes drift { to { transform: translate3d(4%, 6%, 0) rotate(4deg); } }
 ::selection { background: rgba(61, 220, 151, .35); }

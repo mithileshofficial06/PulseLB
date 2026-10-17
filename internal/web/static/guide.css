@@ -98,16 +98,25 @@
 
 /* ---- spotlight ---- */
 #pg-spot {
-  position: fixed; z-index: 990; pointer-events: none; display: none;
+  position: fixed; left: 0; top: 0; z-index: 990; pointer-events: none; display: none;
   border-radius: 18px;
   border: 2px solid var(--mint);
-  box-shadow: 0 0 34px 4px rgba(61, 220, 151, .55), 0 0 0 9999px rgba(3, 5, 10, .72);
-  transition: left .5s cubic-bezier(.2, .8, .2, 1), top .5s cubic-bezier(.2, .8, .2, 1), width .5s cubic-bezier(.2, .8, .2, 1), height .5s cubic-bezier(.2, .8, .2, 1);
+  /* The dim overlay is a static shadow: it is never animated, so moving
+     the spotlight costs a transform, not a full-screen repaint. */
+  box-shadow: 0 0 0 9999px rgba(3, 5, 10, .72);
+  will-change: transform;
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1), width .45s cubic-bezier(.2, .8, .2, 1), height .45s cubic-bezier(.2, .8, .2, 1);
 }
-#pg-spot.on { display: block; animation: spotIn .5s ease-out; }
+#pg-spot.on { display: block; animation: spotIn .4s ease-out; }
 @keyframes spotIn { from { opacity: 0; } }
-#pg-spot.pulse { animation: spotIn .5s ease-out, breathe 2.4s ease-in-out infinite; }
-@keyframes breathe { 50% { box-shadow: 0 0 50px 10px rgba(61, 220, 151, .45), 0 0 0 9999px rgba(3, 5, 10, .72); } }
+/* glow ring: only its opacity animates, which the GPU handles cheaply */
+#pg-spot::before {
+  content: ""; position: absolute; inset: -3px; border-radius: inherit;
+  box-shadow: 0 0 34px 6px rgba(61, 220, 151, .55);
+  opacity: .5; will-change: opacity;
+}
+#pg-spot.pulse::before { animation: glowPulse 2.2s ease-in-out infinite; }
+@keyframes glowPulse { 50% { opacity: 1; } }
 #pg-spot .pg-label {
   position: absolute; left: 10px; top: -38px;
   background: var(--mint); color: #04140c; border-radius: 999px;

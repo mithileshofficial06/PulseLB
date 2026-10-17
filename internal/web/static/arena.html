@@ -60,6 +60,7 @@
   .manual .row { margin-top: 10px; }
   @media (max-width: 560px) { .score { font-size: 12px; } .score th, .score td { padding: 8px 4px; } }
 </style>
+<link rel="stylesheet" href="motion.css">
 <link rel="stylesheet" href="brutal.css">
 <script>
   // Pick the skin before first paint: brutal by default, remembered per browser.
@@ -67,10 +68,24 @@
     var s = "brutal";
     try { s = localStorage.getItem("pulselb-skin") || s; } catch (e) {}
     document.documentElement.dataset.skin = s;
+    document.documentElement.classList.add("booting");
   })();
 </script>
 </head>
 <body data-page="arena">
+<div id="boot" role="status" aria-label="Loading PulseLB">
+  <div class="boot-inner">
+    <div class="boot-mark"><span class="ring"></span><span class="ring"></span><span class="ring"></span>
+      <div class="core"><svg viewBox="0 0 64 32" aria-hidden="true"><path d="M2 16h14l5-12 9 26 7-20 4 6h21"/></svg></div>
+    </div>
+    <div class="boot-word"><span style="--i:0">P</span><span style="--i:1">u</span><span style="--i:2">l</span><span style="--i:3">s</span><span style="--i:4">e</span><span style="--i:5">L</span><span style="--i:6">B</span></div>
+    <div class="boot-sub">self-healing load balancer</div>
+    <div class="boot-bar"><i></i></div>
+    <ul class="boot-log"></ul>
+  </div>
+  <button class="boot-skip" type="button">Skip</button>
+</div>
+
 <nav class="topnav">
   <a class="logo" href="index.html"><span class="pulse" aria-hidden="true"></span>PulseLB</a>
   <div class="links">
@@ -128,6 +143,7 @@
   </div>
 </div>
 <script src="common.js"></script>
+<script src="motion.js"></script>
 <script src="arena.js"></script>
 <script src="guide.js"></script>
 </body>

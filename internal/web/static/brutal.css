@@ -317,8 +317,9 @@ html[data-skin="brutal"] {
   border-radius: 0; border: 4px solid var(--yellow);
   box-shadow: 0 0 0 9999px rgba(9, 8, 11, .8);
 }
-[data-skin="brutal"] #pg-spot.pulse { animation: spotIn .3s ease-out, flashB 1s steps(1) infinite; }
-@keyframes flashB { 50% { border-color: var(--pink); } }
+[data-skin="brutal"] #pg-spot::before { box-shadow: none; inset: -9px; border: 3px solid var(--pink); border-radius: 0; opacity: 0; }
+[data-skin="brutal"] #pg-spot.pulse::before { animation: flashB 1.1s steps(1) infinite; }
+@keyframes flashB { 50% { opacity: 1; } }
 [data-skin="brutal"] #pg-spot .pg-label { border-radius: 0; background: var(--yellow); border: 3px solid var(--ink); font-family: var(--display); font-weight: 400; text-transform: uppercase; box-shadow: 4px 4px 0 var(--ink); }
 [data-skin="brutal"] #pg-hello { border-radius: 0; border: 3px solid var(--ink); background: var(--surface); backdrop-filter: none; box-shadow: 8px 8px 0 var(--yellow); }
 [data-skin="brutal"] #pg-hello b { font-family: var(--display); font-weight: 400; text-transform: uppercase; }
@@ -352,3 +353,29 @@ html[data-skin="brutal"] {
 [data-skin="brutal"] .seg button.heavy { color: var(--amber); }
 [data-skin="brutal"] .seg button.heavy.on { color: var(--on-acc); }
 [data-skin="brutal"] .be .why { font-family: var(--mono); font-size: 11px; }
+
+/* ---- loading screen + motion, brutal versions ---- */
+[data-skin="brutal"] #boot::after { background: var(--yellow); border-top: 3px solid var(--ink); }
+[data-skin="brutal"] .boot-mark .ring { border-radius: 0; border: 3px solid var(--yellow); }
+[data-skin="brutal"] .boot-mark .core { border-radius: 0; background: var(--yellow); border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
+[data-skin="brutal"] .boot-mark svg path { stroke: var(--on-acc); stroke-linecap: square; stroke-linejoin: miter; }
+[data-skin="brutal"] .boot-word { font-family: var(--display); font-weight: 400; text-transform: uppercase; font-size: clamp(38px, 8vw, 62px); }
+[data-skin="brutal"] .boot-sub { font-family: var(--mono); font-weight: 700; color: var(--ink-2); }
+[data-skin="brutal"] .boot-bar { border-radius: 0; height: 16px; border: 3px solid var(--ink); background: var(--surface-2); }
+[data-skin="brutal"] .boot-bar i { border-radius: 0; background: repeating-linear-gradient(45deg, var(--yellow) 0 10px, var(--on-acc) 10px 20px); animation: stripes .8s linear infinite; background-size: 28px 28px; }
+[data-skin="brutal"] .boot-log li b { color: var(--lime); }
+[data-skin="brutal"] .boot-log li.bad b { color: var(--amber); }
+[data-skin="brutal"] .scroll-progress { height: 5px; background: var(--yellow); }
+[data-skin="brutal"] .floaters i { border-radius: 0; border: 3px solid var(--c, var(--yellow)); }
+[data-skin="brutal"] .floaters i.plus::before, [data-skin="brutal"] .floaters i.plus::after { background: var(--c, var(--pink)); border-radius: 0; }
+[data-skin="brutal"] .rotator { font-family: var(--mono); font-weight: 700; }
+[data-skin="brutal"] .rotator .slot span { background: var(--yellow); color: var(--on-acc); padding: 0 6px; font-family: var(--display); font-weight: 400; text-transform: uppercase; }
+[data-skin="brutal"] .flow .packet { border-radius: 0; background: var(--pink); box-shadow: 3px 3px 0 var(--ink); border: 2px solid var(--ink); }
+[data-skin="brutal"] .marquee.rev { background: var(--lime); transform: rotate(1deg); margin-top: 0; margin-bottom: 70px; }
+
+/* big section headings are h2 elements: keep them big, not label tags */
+[data-skin="brutal"] h2.h2big {
+  display: block; background: none; color: var(--ink); padding: 0; box-shadow: none;
+  font-family: var(--display); font-weight: 400; font-size: clamp(32px, 4.6vw, 56px);
+  letter-spacing: -0.02em; line-height: 1; text-transform: uppercase;
+}
