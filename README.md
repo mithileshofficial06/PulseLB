@@ -4,7 +4,7 @@
 It routes around slow servers, heals itself when one dies, protects bookings when there's more traffic than capacity,
 explains every decision in plain English, and proves all of it in a live race against a classic round-robin balancer.
 
-![Race Mode mid-race: classic round robin at 65.9% success and 3.1s p99, PulseLB at 99.8% and 143ms](docs/img/race-live.png)
+![PulseLB landing page with the live routing simulation](docs/img/landing.png)
 
 ## Results at a glance
 
@@ -51,7 +51,16 @@ Needs Go 1.22 or newer. No other dependencies: the standard library only, includ
 go build -o bin/ ./cmd/...
 ```
 
-**1. Control room** (3 simulated backends in one process, autoscaling on):
+**0. The whole show in one command** (landing page, voice guide, control room and Race Mode):
+
+```sh
+bin/demo
+```
+
+It opens http://127.0.0.1:9000 in your browser. Press **Take the voice tour** and Pulse, the built-in guide, explains each page out loud and drives the demo itself.
+Presenter's script: [docs/DEMO.md](docs/DEMO.md).
+
+**1. Control room on its own** (3 simulated backends in one process, autoscaling on):
 
 ```sh
 bin/pulselb -demo
@@ -154,7 +163,7 @@ The scoreboard is measured by the traffic generator, so it's what users would ha
 
 ### The control room
 
-![Dashboard during chaos: backend-3 down, backend-2 slowed, four autoscaled servers](docs/img/dashboard.png)
+![Control room: backend-2 slowed by 300ms gets 1% of traffic](docs/img/dashboard.png)
 
 ## Measuring honestly
 
@@ -197,12 +206,14 @@ cmd/pulselb      the load balancer + control-room dashboard
 cmd/backend      simulated application servers with chaos controls
 cmd/blast        open-model load generator
 cmd/arena        Race Mode: classic vs PulseLB
+cmd/demo         everything in one process: landing page, voice guide, control room, Race Mode
+internal/arena   the Race Mode engine (two worlds, scripted Tatkal Rush, scoring)
 internal/lb      proxy, pickers, health, ejection, admission, autoscaler, journal, admin API
 internal/hist    lock-free latency histogram
 internal/loadgen traffic generation and live traffic control
 internal/backendsim  the simulated server
 internal/perf    opts out of OS power throttling
-internal/web     dashboard and arena pages (embedded, no external libraries)
+internal/web     landing page, dashboard, arena and the Pulse voice guide (embedded; no JS libraries)
 scripts/k6-10k.js    independent k6 cross-check
 results/         raw JSON from the runs quoted above
 ```

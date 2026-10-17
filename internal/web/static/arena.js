@@ -29,8 +29,8 @@ function sideUI(key, label) {
     pills: el("div", { class: "pills" }), journal: el("ul", { class: "journal" }),
     chartHost: el("div"), sub: el("span", { class: "tag" }),
   };
-  const card = el("section", { class: "card side" },
-    el("div", { class: "side-head" }, el("h2", {}, el("i", { style: `--c:var(${SIDE_COLOR[key]})` }), label), u.sub),
+  const card = el("section", { class: "card side " + key, id: "side-" + key },
+    el("div", { class: "side-head" }, el("h3", {}, label), u.sub),
     el("div", { class: "mini" },
       el("div", {}, el("span", {}, "Success"), u.succ),
       el("div", {}, el("span", {}, "p99 latency"), u.p99),
@@ -92,6 +92,9 @@ function renderScenario(v, traffic) {
   const cur = v.stage >= 0 ? st[v.stage] : null;
   $("run").textContent = v.running ? "■ Stop" : v.finished ? "↻ Run again" : "▶ Run the Tatkal Rush";
   if (v.running && cur) {
+    if ($("stageTitle").textContent !== cur.title) {
+      $("stageTitle").classList.remove("flash"); void $("stageTitle").offsetWidth; $("stageTitle").classList.add("flash");
+    }
     $("stageTitle").textContent = cur.title;
     $("stageDetail").textContent = cur.detail;
   } else if (v.finished) {
@@ -152,7 +155,7 @@ $("run").addEventListener("click", () =>
   api("POST", "/api/arena/scenario?action=" + (scen && scen.running ? "stop" : "start")));
 $("rates").addEventListener("click", (e) => {
   const r = e.target.closest("button")?.dataset.r;
-  if (r != null) api("POST", `/api/traffic?rate=${r}&mix=tatkal`);
+  if (r != null) api("POST", `/api/arena/traffic?rate=${r}&mix=tatkal`);
 });
 for (const n of ["backend-1", "backend-2", "backend-3"]) {
   const btn = (label, action, value) => el("button", { onclick: () => api("POST", `/api/arena/chaos?backend=${n}&action=${action}&value=${value}`) }, label);
@@ -180,6 +183,13 @@ async function start() {
     }
     renderCompare();
     renderScenario(d.scenario, d.traffic);
+    window.PULSE_STATE = { scen: d.scenario, sides: d.sides, traffic: d.traffic };
   };
 }
 start();
+
+// Hooks for the voice guide.
+window.PULSE_ACTIONS = {
+  startRace: () => api("POST", "/api/arena/scenario?action=start"),
+  stopRace: () => api("POST", "/api/arena/scenario?action=stop"),
+};

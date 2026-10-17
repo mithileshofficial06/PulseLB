@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PulseLB Control Room</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233ddc97'/%3E%3Cpath d='M4 17h7l3-8 4 15 3-7h7' stroke='%2305070c' stroke-width='3' fill='none' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="guide.css">
+<style>
+  .layout { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 760px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+  .backends { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .be { display: flex; flex-direction: column; gap: 12px; animation: fadeUp .6s cubic-bezier(.2,.8,.2,1) both; }
+  .be.down { border-color: rgba(255, 84, 112, .55); box-shadow: 0 0 32px -10px rgba(255, 84, 112, .7); }
+  .be.ejected { border-color: rgba(255, 122, 182, .55); box-shadow: 0 0 32px -10px rgba(255, 122, 182, .6); }
+  .be.warming { border-color: rgba(255, 194, 75, .45); }
+  .be .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .be .name { font-family: var(--display); font-weight: 600; font-size: 17px; }
+  .be .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(91, 157, 255, .15); color: var(--blue); border: 1px solid rgba(91, 157, 255, .35); }
+  .be .bar > div { background: linear-gradient(90deg, var(--blue), var(--mint)) !important; box-shadow: 0 0 12px rgba(61, 220, 151, .5); }
+  .be .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .be .stats b { display: block; font-family: var(--mono); font-size: 15px; font-weight: 500; }
+  .be .stats span { font-size: 11px; color: var(--muted); }
+  .be .chaos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .be .chaos button { font-size: 12px; padding: 5px 9px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; min-height: 22px; }
+  .chip { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: rgba(255, 84, 112, .14); color: #ffb3c0; border: 1px solid rgba(255, 84, 112, .4); animation: fadeUp .4s both; }
+  .feat { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 0; border-top: 1px solid var(--line); align-items: center; }
+  .feat:first-of-type { border-top: 0; padding-top: 0; }
+  .feat b { font-weight: 600; }
+  .feat p { margin: 0; grid-column: 1; font-size: 13px; color: var(--muted); }
+  .switch { width: 44px; height: 24px; border-radius: 12px; padding: 0; position: relative; background: var(--surface-3); border: 1px solid var(--line-2); }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--ink-2); transition: left .25s cubic-bezier(.2,.8,.2,1), background .25s; }
+  .switch.on { background: rgba(61, 220, 151, .25); border-color: rgba(61, 220, 151, .6); box-shadow: 0 0 16px -4px rgba(61, 220, 151, .8); }
+  .switch.on::after { left: 23px; background: var(--mint); }
+  .lane { display: grid; grid-template-columns: 90px 1fr 140px; gap: 12px; align-items: center; padding: 8px 0; }
+  .lane b { font-weight: 600; }
+  .lane .nums { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+  @media (max-width: 560px) { .lane { grid-template-columns: 70px 1fr; } .lane .nums { grid-column: 1 / -1; text-align: left; } }
+  .traffic { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;
+    background: linear-gradient(90deg, rgba(61, 220, 151, .08), rgba(91, 157, 255, .06)), var(--surface); border-color: rgba(61, 220, 151, .25); }
+  .offline { display: none; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255, 84, 112, .5); background: rgba(255, 84, 112, .12); margin-bottom: 16px; }
+  .section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 4px 0 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body data-page="dashboard">
+<nav class="topnav">
+  <a class="logo" href="index.html"><span class="pulse" aria-hidden="true"></span>PulseLB</a>
+  <div class="links">
+    <a href="index.html">Home</a>
+    <a href="dashboard.html" class="here">Control room</a>
+    <a href="arena.html">Race mode</a>
+    <button class="guide-btn" data-guide-start>▶ Voice guide</button>
+  </div>
+</nav>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Control <span class="muted">room</span></h1>
+      <div class="tag" id="subtitle">Self-healing load balancer</div>
+    </div>
+    <div class="row">
+      <span class="tag"><b>ROUTING</b></span>
+      <div class="seg" id="algo">
+        <button data-a="p2c" title="Power of two choices over latency">Smart P2C</button>
+        <button data-a="leastconn">Least conn</button>
+        <button data-a="rr">Round robin</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="offline" id="offline">Lost connection to PulseLB, retrying…</div>
+
+  <section class="card traffic" id="trafficCard" style="margin-bottom:18px">
+    <div class="row">
+      <h2 style="margin:0 8px 0 0">Traffic</h2>
+      <div class="seg" id="rates">
+        <button data-r="0">Off</button>
+        <button data-r="1000">1k/s</button>
+        <button data-r="5000">5k/s</button>
+        <button data-r="10000">10k/s</button>
+        <button data-r="15000">15k/s</button>
+      </div>
+      <select id="mix" aria-label="Traffic mix">
+        <option value="tatkal">Tatkal rush mix (20% book · 50% search · 30% browse)</option>
+        <option value="uniform">Uniform (all normal priority)</option>
+      </select>
+    </div>
+    <div class="tag" id="trafficNote">Built-in generator. For benchmark numbers use <code>blast</code>.</div>
+  </section>
+
+  <section class="tiles" id="tiles" style="margin-bottom:18px">
+    <div class="card tile"><div class="label">Served</div><div class="value num" id="kServed">–</div><div class="sub" id="kServedSub">requests / second</div></div>
+    <div class="card tile"><div class="label">Success rate</div><div class="value num" id="kSuccess">–</div><div class="sub" id="kSuccessSub">last second</div></div>
+    <div class="card tile"><div class="label">p99 latency</div><div class="value num" id="kP99">–</div><div class="sub" id="kP99Sub">target –</div></div>
+    <div class="card tile"><div class="label">Shed (protected)</div><div class="value num" id="kShed">–</div><div class="sub">low-priority / second</div></div>
+    <div class="card tile"><div class="label">In flight</div><div class="value num" id="kInflight">–</div><div class="sub" id="kLimit">limit –</div></div>
+    <div class="card tile" id="serversTile"><div class="label">Servers</div><div class="value num" id="kServers">–</div><div class="sub" id="kServersSub">healthy</div></div>
+  </section>
+
+  <div class="grid layout">
+    <div class="grid">
+      <div class="grid charts">
+        <section class="card" id="thrCard"><h2>Throughput</h2><div id="lgThroughput"></div><div id="cThroughput"></div></section>
+        <section class="card" id="latCard"><h2>Latency</h2><div id="lgLatency"></div><div id="cLatency"></div></section>
+      </div>
+      <section id="serversSection">
+        <div class="section-head">
+          <h2>Servers</h2>
+          <span class="tag"><b>Break things on purpose ↓</b> and watch PulseLB react</span>
+        </div>
+        <div class="grid backends" id="backends"></div>
+      </section>
+      <section class="card" id="lanesCard">
+        <h2>Priority lanes</h2>
+        <p class="tag" style="margin:-4px 0 10px">Under overload PulseLB turns away browsing first and keeps bookings flowing.</p>
+        <div id="lanes"></div>
+      </section>
+    </div>
+    <div class="grid">
+      <section class="card" id="featuresCard">
+        <h2>Self-healing features</h2>
+        <div id="features"></div>
+      </section>
+      <section class="card" id="journalCard">
+        <h2>Decision journal</h2>
+        <p class="tag" style="margin:-4px 0 6px">Why PulseLB did what it did, in plain English.</p>
+        <ul class="journal" id="journal" aria-live="polite"></ul>
+      </section>
+    </div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script src="dashboard.js"></script>
+<script src="guide.js"></script>
+</body>
+</html>

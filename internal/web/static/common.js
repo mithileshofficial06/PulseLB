@@ -40,6 +40,14 @@ function cssVar(node, name) {
   return getComputedStyle(node).getPropertyValue(name).trim();
 }
 
+// withAlpha turns "#rrggbb" into rgba() with the given alpha.
+function withAlpha(hex, a) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
 function niceMax(v) {
   if (v <= 0) return 1;
   const p = Math.pow(10, Math.floor(Math.log10(v)));
@@ -113,7 +121,7 @@ class TimeChart {
     this.X = X;
 
     // grid + y labels
-    x.font = "11px system-ui, sans-serif";
+    x.font = "11px 'JetBrains Mono', Consolas, monospace";
     x.textBaseline = "middle";
     x.textAlign = "right";
     for (let i = 0; i <= 4; i++) {
@@ -144,10 +152,12 @@ class TimeChart {
         P.forEach((_, i) => (i ? x.lineTo(X(i), Y(top[i])) : x.moveTo(X(i), Y(top[i]))));
         for (let i = P.length - 1; i >= 0; i--) x.lineTo(X(i), Y(base[i]));
         x.closePath();
-        x.fillStyle = cssVar(host, s.color);
-        x.globalAlpha = 0.85;
+        const col = cssVar(host, s.color);
+        const grad = x.createLinearGradient(0, g.t, 0, g.t + ph);
+        grad.addColorStop(0, col);
+        grad.addColorStop(1, withAlpha(col, 0.35));
+        x.fillStyle = grad;
         x.fill();
-        x.globalAlpha = 1;
         tops.push(top);
         top.forEach((v, i) => (base[i] = v));
       }
@@ -161,13 +171,31 @@ class TimeChart {
       }
     } else {
       for (const s of S) {
-        x.beginPath();
-        P.forEach((p, i) => (i ? x.lineTo(X(i), Y(p[s.key] || 0)) : x.moveTo(X(i), Y(p[s.key] || 0))));
-        x.strokeStyle = cssVar(host, s.color);
+        const col = cssVar(host, s.color);
+        const path = () => {
+          x.beginPath();
+          P.forEach((p, i) => (i ? x.lineTo(X(i), Y(p[s.key] || 0)) : x.moveTo(X(i), Y(p[s.key] || 0))));
+        };
+        // soft area under the line
+        path();
+        x.lineTo(X(P.length - 1), g.t + ph);
+        x.lineTo(X(0), g.t + ph);
+        x.closePath();
+        const grad = x.createLinearGradient(0, g.t, 0, g.t + ph);
+        grad.addColorStop(0, withAlpha(col, 0.22));
+        grad.addColorStop(1, withAlpha(col, 0));
+        x.fillStyle = grad;
+        x.fill();
+        // the line itself, with a glow
+        path();
+        x.strokeStyle = col;
         x.lineWidth = 2;
         x.lineJoin = "round";
+        x.shadowColor = col;
+        x.shadowBlur = 10;
         x.setLineDash(s.dash ? [5, 4] : []);
         x.stroke();
+        x.shadowBlur = 0;
         x.setLineDash([]);
       }
     }
@@ -197,9 +225,9 @@ class TimeChart {
         let v = P[this.hover][s.key] || 0;
         if (this.opts.stack) { acc += v; v = acc; }
         x.beginPath();
-        x.arc(hx, Y(v), 4, 0, Math.PI * 2);
+        x.arc(hx, Y(v), 4.5, 0, Math.PI * 2);
         x.fillStyle = cssVar(host, s.color);
-        x.strokeStyle = surf;
+        x.strokeStyle = cssVar(host, "--bg");
         x.lineWidth = 2;
         x.fill(); x.stroke();
       }
@@ -242,3 +270,45 @@ const STATE_LABEL = {
   healthy: "Healthy", warming: "Warming up", ejected: "Ejected", down: "Down", draining: "Draining",
 };
 const LEVEL_ICON = { info: "•", good: "✓", warn: "▲", crit: "✕" };
+
+// ---- motion helpers: scroll reveal, count-up numbers, cursor glow ----
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const countUp = (node) => {
+    const end = parseFloat(node.dataset.count);
+    const dec = +(node.dataset.decimals || 0);
+    const suf = node.dataset.suffix || "";
+    const show = (v) => (node.textContent = v.toLocaleString("en-IN", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf);
+    if (reduce) return show(end);
+    const t0 = performance.now(), dur = 1600;
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / dur);
+      show(end * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      e.target.classList.add("in");
+      e.target.querySelectorAll("[data-count]").forEach(countUp);
+      if (e.target.matches("[data-count]")) countUp(e.target);
+      io.unobserve(e.target);
+    }
+  }, { threshold: 0.15 });
+  const scan = () => {
+    document.querySelectorAll("[data-reveal]:not(.in)").forEach((n) => io.observe(n));
+    // Numbers outside a revealed block count up on their own.
+    document.querySelectorAll("[data-count]").forEach((n) => { if (!n.closest("[data-reveal]")) io.observe(n); });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scan); else scan();
+  // Cards light up where the cursor is.
+  document.addEventListener("pointermove", (e) => {
+    const c = e.target.closest && e.target.closest(".card");
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    c.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    c.style.setProperty("--my", `${e.clientY - r.top}px`);
+  }, { passive: true });
+})();

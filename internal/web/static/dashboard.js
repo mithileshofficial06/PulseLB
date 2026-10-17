@@ -101,7 +101,7 @@ function chaosBtn(label, name, q, cls = "") {
 function card(name) {
   if (cards.has(name)) return cards.get(name);
   const c = {
-    root: el("div", { class: "card be" }),
+    root: el("div", { class: "card be", "data-be": name }),
     status: el("span", { class: "status" }),
     badge: el("span", { class: "badge", style: "display:none" }, "autoscaled"),
     share: el("div", { style: "background:var(--series-1);width:0" }),
@@ -178,11 +178,14 @@ function renderLanes(p) {
 
 // ---- journal ----
 let lastSeq = 0;
+const recentEvents = [];
 function addEvents(events) {
   const host = $("journal");
   for (const e of events) {
     if (e.seq <= lastSeq) continue; // the stream replays history after a reconnect
     lastSeq = e.seq;
+    recentEvents.push(e);
+    if (recentEvents.length > 100) recentEvents.shift();
     const li = el("li", { class: e.level + " fresh" },
       el("span", { class: "ic", "aria-label": e.level }, LEVEL_ICON[e.level] || "•"),
       el("div", {}, el("time", {}, fmt.time(e.t)), e.msg));
@@ -237,7 +240,15 @@ async function start() {
     }
     addEvents(d.events);
     render();
+    window.PULSE_STATE = { summary, chaos, events: recentEvents };
   };
   es.onerror = () => { $("offline").style.display = "block"; };
 }
 start();
+
+// Hooks for the voice guide, which can drive the demo itself.
+window.PULSE_ACTIONS = {
+  traffic: (rate, mix = "tatkal") => { $("mix").value = mix; return setTraffic(rate); },
+  chaos: (name, q) => api("POST", `/api/chaos?backend=${encodeURIComponent(name)}&${q}`).then(pollChaos),
+  algorithm: (a) => api("POST", "/api/algorithm?name=" + a).then(() => setSeg("algo", "a", a)),
+};
