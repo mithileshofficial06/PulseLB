@@ -4,6 +4,7 @@
 *.out
 # demo video: media and intermediates (scripts are tracked)
 /demo-video/*.mp4
+!/demo-video/pulselb-demo.mp4
 /demo-video/*.png
 /demo-video/raw/
 /demo-video/tts/

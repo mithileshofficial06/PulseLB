@@ -6,6 +6,8 @@ explains every decision in plain English, and proves all of it in a live race ag
 
 ![PulseLB landing page with the live routing simulation](docs/img/landing.png)
 
+🎬 **Demo video (4:26):** [demo-video/pulselb-demo.mp4](demo-video/pulselb-demo.mp4): the landing page, the Control room breaking and healing servers live, and a full Race Mode run against round robin.
+
 ## Results at a glance
 
 **The 10,000 requests/second target**, measured with two independent tools on one laptop
