@@ -8,6 +8,8 @@ explains every decision in plain English, and proves all of it in a live race ag
 
 🎬 **Demo video (4:26):** [demo-video/pulselb-demo.mp4](demo-video/pulselb-demo.mp4): the landing page, the Control room breaking and healing servers live, and a full Race Mode run against round robin.
 
+📸 **Screenshots:** [docs/shots/](docs/shots/), covering the loading screen, landing page, Control room, decision journal and a full race (retake them with `python scripts/shots.py` while the demo runs).
+
 ## Results at a glance
 
 **The 10,000 requests/second target**, measured with two independent tools on one laptop
