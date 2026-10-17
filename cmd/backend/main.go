@@ -25,12 +25,16 @@ func main() {
 	flag.Parse()
 
 	var servers []*backendsim.Server
-	for i, p := range strings.Split(*ports, ",") {
+	list := strings.Split(*ports, ",")
+	for i, p := range list {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
 		name := fmt.Sprintf("%s-%d", *prefix, i+1)
+		if len(list) == 1 {
+			name = *prefix
+		}
 		s := backendsim.New(backendsim.Config{
 			Name:     name,
 			Addr:     *host + ":" + p,
