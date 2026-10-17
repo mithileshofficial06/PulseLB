@@ -86,6 +86,25 @@ type Config struct {
 type Counters struct {
 	Sent, OK, Shed, Errors, Timeouts, Dropped uint64
 	Lat                                       hist.Snapshot // successful requests only
+	RouteSent, RouteOK                        []uint64      // per Mix entry
+}
+
+// Sub returns the counts accumulated since prev.
+func (c Counters) Sub(prev Counters) Counters {
+	d := Counters{
+		Sent: c.Sent - prev.Sent, OK: c.OK - prev.OK, Shed: c.Shed - prev.Shed,
+		Errors: c.Errors - prev.Errors, Timeouts: c.Timeouts - prev.Timeouts,
+		Dropped: c.Dropped - prev.Dropped, Lat: c.Lat.Sub(prev.Lat),
+	}
+	for i := range c.RouteSent {
+		var ps, po uint64
+		if i < len(prev.RouteSent) {
+			ps, po = prev.RouteSent[i], prev.RouteOK[i]
+		}
+		d.RouteSent = append(d.RouteSent, c.RouteSent[i]-ps)
+		d.RouteOK = append(d.RouteOK, c.RouteOK[i]-po)
+	}
+	return d
 }
 
 // Generator produces traffic. Rate can be changed while it runs.
@@ -105,6 +124,9 @@ type Generator struct {
 	dropped  atomic.Uint64
 	lat      hist.Histogram
 	wg       sync.WaitGroup
+
+	routeSent []atomic.Uint64
+	routeOK   []atomic.Uint64
 
 	errMu    sync.Mutex
 	errKinds map[string]uint64
@@ -143,6 +165,8 @@ func New(cfg Config) *Generator {
 		g.total += r.Weight
 		g.cum = append(g.cum, g.total)
 	}
+	g.routeSent = make([]atomic.Uint64, len(cfg.Mix))
+	g.routeOK = make([]atomic.Uint64, len(cfg.Mix))
 	g.SetRate(cfg.Rate)
 	return g
 }
@@ -155,11 +179,19 @@ func (g *Generator) Rate() float64 { return math.Float64frombits(g.rate.Load()) 
 
 // Counters returns the totals so far.
 func (g *Generator) Counters() Counters {
-	return Counters{
+	c := Counters{
 		Sent: g.sent.Load(), OK: g.ok.Load(), Shed: g.shed.Load(), Errors: g.errors.Load(),
 		Timeouts: g.timeouts.Load(), Dropped: g.dropped.Load(), Lat: g.lat.Snapshot(),
 	}
+	for i := range g.routeSent {
+		c.RouteSent = append(c.RouteSent, g.routeSent[i].Load())
+		c.RouteOK = append(c.RouteOK, g.routeOK[i].Load())
+	}
+	return c
 }
+
+// Mix returns the routes this generator sends.
+func (g *Generator) Mix() []Route { return g.cfg.Mix }
 
 // Run sends traffic until Duration elapses or ctx is cancelled, then waits
 // for outstanding requests.
@@ -225,25 +257,27 @@ func (g *Generator) ErrorKinds() map[string]uint64 {
 	return out
 }
 
-func (g *Generator) pick() string {
+func (g *Generator) pick() int {
 	if len(g.cum) == 1 {
-		return g.cfg.Mix[0].Path
+		return 0
 	}
 	x := rand.IntN(g.total)
 	for i, c := range g.cum {
 		if x < c {
-			return g.cfg.Mix[i].Path
+			return i
 		}
 	}
-	return g.cfg.Mix[0].Path
+	return 0
 }
 
 func (g *Generator) fire() {
 	defer g.wg.Done()
 	defer g.inflight.Add(-1)
 	g.sent.Add(1)
+	ri := g.pick()
+	g.routeSent[ri].Add(1)
 	t0 := time.Now()
-	resp, err := g.client.Get(g.cfg.Target + g.pick())
+	resp, err := g.client.Get(g.cfg.Target + g.cfg.Mix[ri].Path)
 	if err != nil {
 		if ne, ok := err.(net.Error); ok && ne.Timeout() {
 			g.timeouts.Add(1)
@@ -261,6 +295,7 @@ func (g *Generator) fire() {
 		g.errors.Add(1)
 	default:
 		g.ok.Add(1)
+		g.routeOK[ri].Add(1)
 		g.lat.Record(time.Since(t0))
 	}
 }

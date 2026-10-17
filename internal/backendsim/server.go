@@ -27,6 +27,10 @@ type Config struct {
 	Latency  time.Duration // base service time per request
 	Jitter   time.Duration // uniform +/- jitter added to Latency
 	Capacity int           // concurrent worker slots; 0 means unlimited
+	// QueueTimeout is how long a request may wait for a free worker slot
+	// before the server gives up and answers 503, like a real server's
+	// request queue limit. 0 means wait forever.
+	QueueTimeout time.Duration
 }
 
 // Server is a running simulated backend.
@@ -187,9 +191,18 @@ func (s *Server) handleWork(w http.ResponseWriter, r *http.Request) {
 	// Wait for a free worker slot: this queue is what makes an overloaded
 	// server slow instead of infinitely fast.
 	if s.slots != nil {
+		var expired <-chan time.Time
+		if s.cfg.QueueTimeout > 0 {
+			t := time.NewTimer(s.cfg.QueueTimeout)
+			defer t.Stop()
+			expired = t.C
+		}
 		select {
 		case s.slots <- struct{}{}:
 			defer func() { <-s.slots }()
+		case <-expired:
+			http.Error(w, "server overloaded", http.StatusServiceUnavailable)
+			return
 		case <-r.Context().Done():
 			return
 		}

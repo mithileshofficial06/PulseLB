@@ -48,7 +48,7 @@ func main() {
 		opts.Name = "Classic"
 	}
 
-	tmpl := backendsim.Config{Latency: *demoLat, Jitter: *demoLat / 4, Capacity: *demoCap}
+	tmpl := backendsim.Config{Latency: *demoLat, Jitter: *demoLat / 4, Capacity: *demoCap, QueueTimeout: time.Second}
 	switch {
 	case *demo:
 		opts.Spawner = &backendsim.Spawner{Template: tmpl}

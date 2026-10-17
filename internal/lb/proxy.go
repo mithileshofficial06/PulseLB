@@ -211,9 +211,11 @@ func (l *LB) eject(b *Backend, now int64) {
 	if cur > now {
 		return
 	}
+	// 5s, 10s, then 20s at most: long enough to stop hammering a sick
+	// server, short enough that a repaired one is back within seconds.
 	k := b.ejections.Load()
-	if k > 3 {
-		k = 3
+	if k > 2 {
+		k = 2
 	}
 	d := l.opts.EjectBase << uint(k)
 	if !b.ejectedUntil.CompareAndSwap(cur, now+int64(d)) {

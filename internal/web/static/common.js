@@ -77,7 +77,11 @@ class TimeChart {
     return { w, h, l: 48, r: 12, t: 8, b: 22 };
   }
 
-  fmtY(v) { return this.opts.unit === "ms" ? fmt.ms(v) : fmt.rate(v); }
+  fmtY(v) {
+    if (this.opts.unit === "ms") return fmt.ms(v);
+    if (this.opts.unit === "pct") return Math.round(v) + "%";
+    return fmt.rate(v);
+  }
 
   draw() {
     const c = this.canvas, g = this.geom();
@@ -102,7 +106,7 @@ class TimeChart {
     }
     const ref = this.opts.ref && this.opts.ref();
     if (ref && ref.value) max = Math.max(max, ref.value * 1.15);
-    max = niceMax(max * 1.05);
+    max = this.opts.max || niceMax(max * 1.05);
     this.max = max;
     const X = (i) => g.l + pw * ((N - P.length + i) / (N - 1));
     const Y = (v) => g.t + ph - (v / max) * ph;

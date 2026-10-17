@@ -20,6 +20,7 @@ type Controller struct {
 	wg     sync.WaitGroup
 	rate   float64
 	mix    string
+	gen    int
 }
 
 // NewController creates an idle controller.
@@ -27,7 +28,7 @@ func NewController(targets ...string) *Controller {
 	return &Controller{targets: targets, mix: "tatkal"}
 }
 
-// Set changes the rate and mix. A rate of 0 stops traffic.
+// Set changes the rate and mix. A rate of 0 pauses traffic.
 func (c *Controller) Set(rate float64, mix string) error {
 	if mix == "" {
 		mix = c.mix
@@ -38,11 +39,11 @@ func (c *Controller) Set(rate float64, mix string) error {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if rate <= 0 {
-		c.stopLocked()
-		c.rate, c.mix = 0, mix
-		return nil
+	if rate < 0 {
+		rate = 0
 	}
+	// Same mix: just change the rate, keeping the generators (and their
+	// cumulative counters) alive. Rate 0 pauses traffic.
 	if c.gens != nil && mix == c.mix {
 		for _, g := range c.gens {
 			g.SetRate(rate)
@@ -50,7 +51,13 @@ func (c *Controller) Set(rate float64, mix string) error {
 		c.rate = rate
 		return nil
 	}
+	if rate == 0 {
+		c.stopLocked()
+		c.rate, c.mix = 0, mix
+		return nil
+	}
 	c.stopLocked()
+	c.gen++
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 	for _, t := range c.targets {
@@ -71,14 +78,41 @@ func (c *Controller) stopLocked() {
 	c.gens, c.cancel = nil, nil
 }
 
-// Stop ends all traffic.
-func (c *Controller) Stop() { c.Set(0, "") }
+// Stop ends all traffic and discards the generators.
+func (c *Controller) Stop() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.stopLocked()
+	c.rate = 0
+}
 
 // State returns the current rate and mix.
 func (c *Controller) State() (float64, string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.rate, c.mix
+}
+
+// Counters returns each target's totals, in target order, or nil when idle.
+func (c *Controller) Counters() []Counters {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.gens == nil {
+		return nil
+	}
+	out := make([]Counters, len(c.gens))
+	for i, g := range c.gens {
+		out[i] = g.Counters()
+	}
+	return out
+}
+
+// Generation increases every time the generators are recreated, so callers
+// can tell when cumulative counters have restarted from zero.
+func (c *Controller) Generation() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.gen
 }
 
 // Dropped returns how many requests the generators could not send.
