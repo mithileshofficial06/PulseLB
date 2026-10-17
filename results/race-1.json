@@ -1,0 +1,66 @@
+{
+  "classic": {
+    "sent": 143998,
+    "ok": 111760,
+    "shed": 0,
+    "errors": 32238,
+    "success_pct": 77.61218905818136,
+    "bookings": 29006,
+    "bookings_ok": 22519,
+    "booking_pct": 77.63566158725781,
+    "p50": 606.208,
+    "p99": 4849.664,
+    "peak_servers": 3
+  },
+  "peak_rate_per_side": 2250,
+  "pulselb": {
+    "sent": 144000,
+    "ok": 140549,
+    "shed": 3451,
+    "errors": 0,
+    "success_pct": 97.60347222222222,
+    "bookings": 28906,
+    "bookings_ok": 28831,
+    "booking_pct": 99.74053829654743,
+    "p50": 11.52,
+    "p99": 258.048,
+    "peak_servers": 6
+  },
+  "stages": [
+    {
+      "at": 0,
+      "title": "9:59 AM — normal morning",
+      "detail": "750 req/s per side. Both balancers look identical."
+    },
+    {
+      "at": 8,
+      "title": "10:00 AM — Tatkal booking opens",
+      "detail": "Traffic jumps to 2250 req/s per side: 75% of fleet capacity."
+    },
+    {
+      "at": 20,
+      "title": "backend-2 slows down",
+      "detail": "It still passes health checks but every request takes +400ms: a gray failure."
+    },
+    {
+      "at": 36,
+      "title": "backend-3 crashes",
+      "detail": "The process dies. It comes back by itself after 15 seconds."
+    },
+    {
+      "at": 56,
+      "title": "backend-2 is fixed",
+      "detail": "Ops repair the slow server."
+    },
+    {
+      "at": 66,
+      "title": "10:05 AM — rush is over",
+      "detail": "Traffic returns to normal."
+    },
+    {
+      "at": 76,
+      "title": "Final whistle",
+      "detail": "Traffic stops; the scoreboard is frozen."
+    }
+  ]
+}
