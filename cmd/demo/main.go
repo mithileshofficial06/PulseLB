@@ -31,6 +31,8 @@ func main() {
 	addr := flag.String("addr", "127.0.0.1:9000", "address for the web pages")
 	listen := flag.String("listen", "127.0.0.1:8080", "client traffic address of the control-room balancer")
 	open := flag.Bool("open", true, "open the landing page in the default browser")
+	raceCap := flag.Int("race-capacity", 10, "race mode: worker slots per backend (10 slots x 10ms = 1,000 req/s each)")
+	racePeak := flag.Float64("race-peak", 2250, "race mode: per-side request rate at the peak of the rush")
 	flag.Parse()
 	if err := perf.DisablePowerThrottling(); err != nil {
 		log.Printf("could not opt out of OS power throttling: %v", err)
@@ -64,7 +66,7 @@ func main() {
 	defer traffic.Stop()
 
 	// Race Mode: two more worlds on ports 8101-8103 and 8201-8203.
-	race, err := arena.New(arena.Config{})
+	race, err := arena.New(arena.Config{Capacity: *raceCap, Peak: *racePeak})
 	if err != nil {
 		log.Fatalf("race mode: %v", err)
 	}
