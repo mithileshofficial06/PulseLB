@@ -46,6 +46,8 @@ func main() {
 	latency := flag.Duration("latency", 10*time.Millisecond, "backend service time")
 	capacity := flag.Int("capacity", 10, "worker slots per backend (10 slots / 10ms = 1,000 req/s each)")
 	peak := flag.Float64("peak", 2250, "per-side request rate during the Tatkal rush (75% of a 3-server fleet)")
+	race := flag.Bool("race", false, "run the Tatkal Rush once without a browser, print the scoreboard and exit")
+	out := flag.String("json", "", "with -race: also write the scoreboard to this JSON file")
 	flag.Parse()
 
 	tmpl := backendsim.Config{Latency: *latency, Jitter: *latency / 4, Capacity: *capacity, QueueTimeout: time.Second}
@@ -79,9 +81,13 @@ func main() {
 	log.Printf("classic LB on %s, PulseLB on %s, %d backends each (capacity %d req/s per backend)",
 		a.sides[0].url, a.sides[1].url, 3, int(float64(*capacity)/latency.Seconds()))
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-	<-sig
+	if *race {
+		a.runHeadless(*out)
+	} else {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+		<-sig
+	}
 	a.scen.stop()
 	a.traffic.Stop()
 	for _, s := range a.sides {
@@ -274,6 +280,52 @@ func (a *arena) startScenario() {
 			}
 		}
 	}()
+}
+
+// runHeadless runs the scenario once and prints the scoreboard.
+func (a *arena) runHeadless(out string) {
+	a.startScenario()
+	last := -2
+	for {
+		time.Sleep(500 * time.Millisecond)
+		v := a.view()
+		if v.Stage != last && v.Stage >= 0 && v.Stage < len(v.Stages) {
+			last = v.Stage
+			fmt.Printf("[%4.0fs] %s: %s\n", v.Stages[v.Stage].At, v.Stages[v.Stage].Title, v.Stages[v.Stage].Detail)
+		}
+		if v.Finished {
+			printScore(v.Score)
+			if out != "" {
+				f, err := os.Create(out)
+				if err != nil {
+					log.Fatal(err)
+				}
+				enc := json.NewEncoder(f)
+				enc.SetIndent("", "  ")
+				enc.Encode(map[string]any{"classic": v.Score[0], "pulselb": v.Score[1], "peak_rate_per_side": a.peak, "stages": v.Stages})
+				f.Close()
+				fmt.Printf("wrote %s\n", out)
+			}
+			return
+		}
+	}
+}
+
+func printScore(sc []Score) {
+	if len(sc) < 2 {
+		fmt.Println("no score recorded")
+		return
+	}
+	c, p := sc[0], sc[1]
+	fmt.Printf("\n%-40s %16s %16s\n", "measured at the client", "classic", "pulselb")
+	row := func(label, a, b string) { fmt.Printf("%-40s %16s %16s\n", label, a, b) }
+	row("requests that succeeded", fmt.Sprintf("%.2f%%", c.SuccessPct), fmt.Sprintf("%.2f%%", p.SuccessPct))
+	row("tatkal bookings completed", fmt.Sprintf("%.2f%%", c.BookingPct), fmt.Sprintf("%.2f%%", p.BookingPct))
+	row("failed requests", fmt.Sprint(c.Errors), fmt.Sprint(p.Errors))
+	row("politely turned away (503)", fmt.Sprint(c.Shed), fmt.Sprint(p.Shed))
+	row("p50 latency (successful)", fmtMs(c.P50), fmtMs(p.P50))
+	row("p99 latency (successful)", fmtMs(c.P99), fmtMs(p.P99))
+	row("most healthy servers", fmt.Sprint(c.PeakServers), fmt.Sprint(p.PeakServers))
 }
 
 func (sc *scenario) stop() {
