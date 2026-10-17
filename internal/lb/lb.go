@@ -190,6 +190,7 @@ func New(opts Options) *LB {
 		},
 	}
 	l.bufPool.New = func() any { b := make([]byte, 32*1024); return &b }
+	l.budget.milli.Store(budgetFloor)
 	l.picker.Store(&pickerBox{NewPicker(opts.Algorithm)})
 	if opts.Smart {
 		l.feat.Outlier.Store(true)

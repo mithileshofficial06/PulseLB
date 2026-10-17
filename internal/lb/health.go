@@ -70,6 +70,7 @@ func (l *LB) check(b *Backend) {
 // control runs every 250ms: returns ejected backends whose time is up and
 // adapts the load-shedding limit.
 func (l *LB) control() {
+	l.budget.refillFloor()
 	now := time.Now().UnixNano()
 	for _, b := range l.pool.All() {
 		if u := b.ejectedUntil.Load(); u != 0 && u <= now && b.ejectedUntil.CompareAndSwap(u, 0) {

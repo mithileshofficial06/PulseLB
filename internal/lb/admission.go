@@ -154,14 +154,25 @@ func (a *Admission) adjust(p90, slo time.Duration, j *Journal) {
 // retryBudget caps retries to a fraction of normal traffic, so a failing
 // backend can't trigger a retry storm that knocks over the healthy ones.
 // Each request deposits 0.2 tokens; each retry spends 1, so retries add at
-// most ~20% extra load.
+// most ~20% extra load. A floor of about 10 retries per second (refilled by
+// the control loop) keeps retries working at low traffic and right after
+// startup, when 20% of almost nothing would be no retries at all.
 type retryBudget struct{ milli atomic.Int64 }
 
 const (
 	budgetDeposit = 200
 	budgetCost    = 1000
 	budgetCap     = 100 * budgetCost
+	budgetFloor   = 10 * budgetCost
 )
+
+// refillFloor tops the budget up towards the floor; called every 250ms it
+// grants at most 2.5 retries per tick, i.e. ~10 per second.
+func (b *retryBudget) refillFloor() {
+	if v := b.milli.Load(); v < budgetFloor {
+		b.milli.Add(budgetFloor / 4)
+	}
+}
 
 func (b *retryBudget) deposit() {
 	if b.milli.Load() < budgetCap {
