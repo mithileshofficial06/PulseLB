@@ -36,7 +36,7 @@
   .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--ink-2); transition: left .25s cubic-bezier(.2,.8,.2,1), background .25s; }
   .switch.on { background: rgba(61, 220, 151, .25); border-color: rgba(61, 220, 151, .6); box-shadow: 0 0 16px -4px rgba(61, 220, 151, .8); }
   .switch.on::after { left: 23px; background: var(--mint); }
-  .lane { display: grid; grid-template-columns: 90px 1fr 140px; gap: 12px; align-items: center; padding: 8px 0; }
+  .lane { display: grid; grid-template-columns: 110px 1fr 210px; gap: 12px; align-items: center; padding: 8px 0; }
   .lane b { font-weight: 600; }
   .lane .nums { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
   @media (max-width: 560px) { .lane { grid-template-columns: 70px 1fr; } .lane .nums { grid-column: 1 / -1; text-align: left; } }
@@ -44,6 +44,39 @@
     background: linear-gradient(90deg, rgba(61, 220, 151, .08), rgba(91, 157, 255, .06)), var(--surface); border-color: rgba(61, 220, 151, .25); }
   .offline { display: none; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255, 84, 112, .5); background: rgba(255, 84, 112, .12); margin-bottom: 16px; }
   .section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 4px 0 12px; flex-wrap: wrap; }
+
+  /* ---- explanation layer ---- */
+  .intro { margin: 10px 0 0; max-width: 640px; color: var(--ink-2); font-size: 15px; }
+  .howto { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 900px) { .howto { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .howto .s { padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; }
+  .howto .n { font-family: var(--display); font-size: 26px; line-height: 1; color: var(--accent); }
+  .howto strong { display: block; font-size: 14px; }
+  .howto span { font-size: 12px; color: var(--ink-2); }
+  .now { display: flex; gap: 14px; align-items: center; padding: 14px 18px; margin-bottom: 8px; flex-wrap: wrap; }
+  .now-tag { font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 3px 8px; background: var(--surface-3); color: var(--ink); }
+  .now-msg { font-size: 17px; font-weight: 600; flex: 1; min-width: 240px; }
+  .now[data-tone="good"] .now-tag { background: var(--good); color: #05070c; }
+  .now[data-tone="warn"] .now-tag { background: var(--warning); color: #05070c; }
+  .now[data-tone="bad"] .now-tag { background: var(--critical); color: #05070c; }
+  .step-h { display: flex; align-items: center; gap: 12px; margin: 26px 0 14px; flex-wrap: wrap; }
+  .step-h .n { width: 34px; height: 34px; display: grid; place-items: center; font-family: var(--display); font-size: 18px; background: var(--accent); color: #05070c; border-radius: 10px; }
+  .step-h h3 { font-size: 22px; }
+  .step-h .tag { margin: 0; }
+  .side-col .step-h { margin-top: 26px; }
+  .controls { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+  @media (max-width: 900px) { .controls { grid-template-columns: minmax(0, 1fr); } }
+  .explain { font-size: 13px; color: var(--ink-2); margin: 8px 0 10px; }
+  .warn-note { margin-bottom: 0; color: var(--muted); }
+  .algo-help { margin: 14px 0 0; font-size: 14px; line-height: 1.5; }
+  .algo-help b { color: var(--accent); }
+  .legend-card { padding: 14px 18px; }
+  .legend-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; font-size: 13px; }
+  @media (max-width: 700px) { .legend-grid { grid-template-columns: minmax(0, 1fr); } }
+  .legend-grid ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; color: var(--ink-2); }
+  .legend-grid code { font-size: 11px; margin-right: 6px; white-space: nowrap; }
+  .legend-grid .status { margin-right: 6px; }
+  .be .why { font-size: 12px; color: var(--ink-2); margin-top: -6px; min-height: 16px; }
 </style>
 <link rel="stylesheet" href="brutal.css">
 <script>
@@ -70,74 +103,116 @@
     <div class="brand">
       <h1>Control <span class="muted">room</span></h1>
       <div class="tag" id="subtitle">Self-healing load balancer</div>
-    </div>
-    <div class="row">
-      <span class="tag"><b>ROUTING</b></span>
-      <div class="seg" id="algo">
-        <button data-a="p2c" title="Power of two choices over latency">Smart P2C</button>
-        <button data-a="leastconn">Least conn</button>
-        <button data-a="rr">Round robin</button>
-      </div>
+      <p class="intro">One PulseLB load balancer in front of 3 servers, live. Send fake users, break servers on purpose, and watch it heal itself.</p>
     </div>
   </header>
 
+  <div class="howto" aria-label="How to use this page">
+    <div class="card s"><b class="n">1</b><div><strong>Send traffic</strong><span>Pick how many fake users per second.</span></div></div>
+    <div class="card s"><b class="n">2</b><div><strong>Check users are happy</strong><span>Are requests answered, and fast?</span></div></div>
+    <div class="card s"><b class="n">3</b><div><strong>Break a server</strong><span>Use the buttons on a server card.</span></div></div>
+    <div class="card s"><b class="n">4</b><div><strong>Read why</strong><span>The journal explains what PulseLB did.</span></div></div>
+  </div>
+
+  <div class="card now" id="nowBanner" data-tone="idle" aria-live="polite">
+    <span class="now-tag">Right now</span>
+    <span class="now-msg" id="nowMsg">Connecting to PulseLB…</span>
+  </div>
+
   <div class="offline" id="offline">Lost connection to PulseLB, retrying…</div>
 
-  <section class="card traffic" id="trafficCard" style="margin-bottom:18px">
-    <div class="row">
-      <h2 style="margin:0 8px 0 0">Traffic</h2>
-      <div class="seg" id="rates">
-        <button data-r="0">Off</button>
-        <button data-r="1000">1k/s</button>
-        <button data-r="5000">5k/s</button>
-        <button data-r="10000">10k/s</button>
-        <button data-r="15000">15k/s</button>
-      </div>
-      <select id="mix" aria-label="Traffic mix">
-        <option value="tatkal">Tatkal rush mix (20% book · 50% search · 30% browse)</option>
-        <option value="uniform">Uniform (all normal priority)</option>
-      </select>
-    </div>
-    <div class="tag" id="trafficNote">Built-in generator. For benchmark numbers use <code>blast</code>.</div>
-  </section>
-
-  <section class="tiles" id="tiles" style="margin-bottom:18px">
-    <div class="card tile"><div class="label">Served</div><div class="value num" id="kServed">–</div><div class="sub" id="kServedSub">requests / second</div></div>
-    <div class="card tile"><div class="label">Success rate</div><div class="value num" id="kSuccess">–</div><div class="sub" id="kSuccessSub">last second</div></div>
-    <div class="card tile"><div class="label">p99 latency</div><div class="value num" id="kP99">–</div><div class="sub" id="kP99Sub">target –</div></div>
-    <div class="card tile"><div class="label">Shed (protected)</div><div class="value num" id="kShed">–</div><div class="sub">low-priority / second</div></div>
-    <div class="card tile"><div class="label">In flight</div><div class="value num" id="kInflight">–</div><div class="sub" id="kLimit">limit –</div></div>
-    <div class="card tile" id="serversTile"><div class="label">Servers</div><div class="value num" id="kServers">–</div><div class="sub" id="kServersSub">healthy</div></div>
-  </section>
-
-  <div class="grid layout">
-    <div class="grid">
-      <div class="grid charts">
-        <section class="card" id="thrCard"><h2>Throughput</h2><div id="lgThroughput"></div><div id="cThroughput"></div></section>
-        <section class="card" id="latCard"><h2>Latency</h2><div id="lgLatency"></div><div id="cLatency"></div></section>
-      </div>
-      <section id="serversSection">
-        <div class="section-head">
-          <h2>Servers</h2>
-          <span class="tag"><b>Break things on purpose ↓</b> and watch PulseLB react</span>
+  <!-- STEP 1 -->
+  <div class="step-h"><span class="n">1</span><h3>Send traffic</h3><p class="tag">Fake users hitting the site. Then choose how PulseLB picks a server for each one.</p></div>
+  <div class="grid controls">
+    <section class="card traffic" id="trafficCard">
+      <h2>Users per second</h2>
+      <div class="row" style="margin-top:12px">
+        <div class="seg" id="rates">
+          <button data-r="0">Off</button>
+          <button data-r="1000">1k/s</button>
+          <button data-r="5000">5k/s</button>
+          <button data-r="10000" class="heavy">10k/s ⚠</button>
+          <button data-r="15000" class="heavy">15k/s ⚠</button>
         </div>
+        <select id="mix" aria-label="Traffic mix">
+          <option value="tatkal">Tatkal rush: 20% booking · 50% search · 30% browsing</option>
+          <option value="uniform">Uniform: every request equally important</option>
+        </select>
+      </div>
+      <div class="tag" id="trafficNote" style="margin-top:10px">Traffic is off.</div>
+      <p class="explain warn-note">⚠ 10k/s and above runs the users, PulseLB and every server inside this one program on a laptop, which can overload it. The real 10k benchmark uses separate programs (see the README).</p>
+    </section>
+    <section class="card" id="routingCard">
+      <h2>How to pick a server</h2>
+      <div class="seg" id="algo" style="margin-top:12px">
+        <button data-a="p2c">Smart P2C</button>
+        <button data-a="leastconn">Least conn</button>
+        <button data-a="rr">Round robin</button>
+      </div>
+      <p class="algo-help" id="algoHelp"></p>
+    </section>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-h"><span class="n">2</span><h3>Are users happy?</h3><p class="tag">Updated every second, measured by PulseLB.</p></div>
+  <section class="tiles" id="tiles">
+    <div class="card tile" title="Requests answered successfully in the last second"><div class="label">Answered / sec</div><div class="value num" id="kServed">–</div><div class="sub" id="kServedSub">requests answered each second</div></div>
+    <div class="card tile" title="Share of requests answered OK. Refused and failed requests count against it."><div class="label">Answered OK</div><div class="value num" id="kSuccess">–</div><div class="sub" id="kSuccessSub">of all requests</div></div>
+    <div class="card tile" title="99% of requests finish faster than this: the worst wait most users could see."><div class="label">Slowest 1% wait</div><div class="value num" id="kP99">–</div><div class="sub" id="kP99Sub">goal: under 250ms</div></div>
+    <div class="card tile" title="Low-priority requests politely refused (503, try again) so bookings stay fast"><div class="label">Turned away</div><div class="value num" id="kShed">–</div><div class="sub">browse/search refused per sec to protect bookings</div></div>
+    <div class="card tile" title="Requests being handled at this moment"><div class="label">Being handled now</div><div class="value num" id="kInflight">–</div><div class="sub" id="kLimit">limit –</div></div>
+    <div class="card tile" id="serversTile" title="Servers that are up and receiving traffic"><div class="label">Healthy servers</div><div class="value num" id="kServers">–</div><div class="sub" id="kServersSub">healthy</div></div>
+  </section>
+  <div class="grid charts" style="margin-top:20px">
+    <section class="card" id="thrCard"><h2>Requests per second</h2><p class="explain">Blue = answered. Amber = politely turned away. Red = failed. You want solid blue.</p><div id="lgThroughput"></div><div id="cThroughput"></div></section>
+    <section class="card" id="latCard"><h2>How long requests take</h2><p class="explain">Blue = a typical request (p50). Orange = the slowest 1% (p99). The dashed line is the 250ms goal.</p><div id="lgLatency"></div><div id="cLatency"></div></section>
+  </div>
+
+  <!-- STEP 3 + 4 -->
+  <div class="grid layout" style="margin-top:8px">
+    <div class="grid">
+      <div class="step-h"><span class="n">3</span><h3>Break a server</h3><p class="tag">Press a button on any card, then watch steps 2 and 4.</p></div>
+      <section class="card legend-card">
+        <div class="legend-grid">
+          <div><b>Buttons</b>
+            <ul>
+              <li><code>🐢 Slow down</code> every request takes +300ms, but health checks still pass</li>
+              <li><code>⚠ 30% errors</code> 3 in 10 requests fail</li>
+              <li><code>💥 Crash 20s</code> the server dies and restarts after 20 seconds</li>
+              <li><code>🩺 Fail health</code> its health check reports sick</li>
+              <li><code>🔧 Repair</code> undoes everything</li>
+            </ul>
+          </div>
+          <div><b>Server states</b>
+            <ul>
+              <li><span class="status healthy">Healthy</span> serving normally</li>
+              <li><span class="status warming">Warming up</span> back after a problem, gets traffic slowly</li>
+              <li><span class="status ejected">Ejected</span> kept failing, taken out for a few seconds</li>
+              <li><span class="status down">Down</span> not answering health checks, gets no traffic</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section id="serversSection">
         <div class="grid backends" id="backends"></div>
       </section>
       <section class="card" id="lanesCard">
-        <h2>Priority lanes</h2>
-        <p class="tag" style="margin:-4px 0 10px">Under overload PulseLB turns away browsing first and keeps bookings flowing.</p>
+        <h2>Who gets protected first</h2>
+        <p class="explain">With more traffic than the servers can handle, PulseLB turns away browsing first, then search. Bookings get through until the very end.</p>
         <div id="lanes"></div>
       </section>
     </div>
-    <div class="grid">
-      <section class="card" id="featuresCard">
-        <h2>Self-healing features</h2>
-        <div id="features"></div>
-      </section>
+    <div class="grid side-col">
+      <div class="step-h"><span class="n">4</span><h3>Why did it do that?</h3><p class="tag">PulseLB explains every decision.</p></div>
       <section class="card" id="journalCard">
         <h2>Decision journal</h2>
-        <p class="tag" style="margin:-4px 0 6px">Why PulseLB did what it did, in plain English.</p>
+        <p class="explain">Newest first. Each line is something PulseLB noticed or did, and why.</p>
         <ul class="journal" id="journal" aria-live="polite"></ul>
+      </section>
+      <section class="card" id="featuresCard">
+        <h2>Self-healing switches</h2>
+        <p class="explain">Turn one off, then break a server, to see what goes wrong without it.</p>
+        <div id="features"></div>
       </section>
     </div>
   </div>

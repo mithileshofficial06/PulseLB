@@ -91,7 +91,23 @@ func (a *autoscaler) step() {
 		a.short = 0
 	}
 
+	// Servers this autoscaler launched that have been dead for 10 health
+	// checks are removed rather than left in the pool forever.
+	all := l.pool.All()
+	for _, b := range all {
+		if b.Managed && !b.healthy.Load() && !b.draining.Load() && b.healthStreak.Load() <= -10 {
+			go l.drain(b, "it has not answered health checks for 10 seconds")
+		}
+	}
+
 	switch {
+	// Never grow past MaxBackends in total, dead ones included. When the
+	// machine itself is overloaded, health checks time out and servers look
+	// dead; launching more servers on the same machine would only add load.
+	case len(all) >= l.opts.MaxBackends && a.short >= 3:
+		l.journal.AddLimited("scale-cap", 15*time.Second, LevelWarn,
+			"Only %d of %d target servers are healthy, but the fleet is already at its limit of %d servers, so no more are launched. If every server is struggling at once, the machine itself is probably overloaded.",
+			len(healthy), a.desired, l.opts.MaxBackends)
 	case a.short >= 3 && !a.busy.Load() && now.Sub(a.lastSpawn) > 3*time.Second:
 		a.busy.Store(true)
 		a.lastSpawn = now

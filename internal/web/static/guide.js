@@ -56,6 +56,10 @@
       { sel: ".brand", title: "The control room", say: "Welcome to the control room. Everything here is live. I'll drive this demo myself, so just watch. You can pause or skip me at any time." },
       { sel: "#trafficCard", title: "Traffic on", before: () => A().traffic && A().traffic(5000, "tatkal"),
         say: "First, I'm switching on five thousand requests per second, using the Tatkal mix: twenty percent bookings, fifty percent searches and thirty percent browsing.", wait: 3500 },
+      { sel: "#nowBanner", title: "Right now", say: () => {
+        const m = (document.getElementById("nowMsg") || {}).textContent || "";
+        return `This line sums up the whole page in plain English, every second. Right now it says: ${m}`;
+      } },
       { sel: "#tiles", title: "Live numbers", say: () => {
         const p = point();
         const done = (p.ok || 0) + (p.errors || 0) + (p.shed || 0);

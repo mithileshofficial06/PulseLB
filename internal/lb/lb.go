@@ -154,8 +154,11 @@ func New(opts Options) *LB {
 	opts.defaults()
 	ctx, cancel := context.WithCancel(context.Background())
 	l := &LB{
-		opts:    opts,
-		adm:     newAdmission(16, opts.MaxInflight),
+		opts: opts,
+		// The limit never drops below 1/32 of the maximum (128 by default):
+		// shedding should trim overload, not refuse almost everything when
+		// latency is high for reasons more concurrency can't fix.
+		adm:     newAdmission(max(16, opts.MaxInflight/32), opts.MaxInflight),
 		stats:   newStats(),
 		journal: newJournal(),
 		ctx:     ctx,
