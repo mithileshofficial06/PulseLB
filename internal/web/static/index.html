@@ -131,6 +131,15 @@
 
   footer { border-top: 1px solid var(--line); padding-top: 24px; margin-top: 90px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 </style>
+<link rel="stylesheet" href="brutal.css">
+<script>
+  // Pick the skin before first paint: brutal by default, remembered per browser.
+  (function () {
+    var s = "brutal";
+    try { s = localStorage.getItem("pulselb-skin") || s; } catch (e) {}
+    document.documentElement.dataset.skin = s;
+  })();
+</script>
 </head>
 <body data-page="home">
 <nav class="topnav">
@@ -167,6 +176,11 @@
       <p class="sim-cap" id="simCaption" aria-live="polite">Normal traffic · P2C spreads the load evenly</p>
     </div>
   </section>
+
+  <div class="marquee" aria-hidden="true"><div>
+    ★ 9,997 req/s sustained ★ 0 failed requests in the race ★ 99.8% of bookings ★ p99 260ms vs 4.8s ★ zero dependencies ★ heals itself ★ explains itself
+    ★ 9,997 req/s sustained ★ 0 failed requests in the race ★ 99.8% of bookings ★ p99 260ms vs 4.8s ★ zero dependencies ★ heals itself ★ explains itself
+  </div></div>
 
   <svg class="ecg" viewBox="0 0 1300 80" preserveAspectRatio="none" aria-hidden="true">
     <path class="ghost" d="M0 40 H380 l20 0 l12 -28 l16 58 l14 -50 l10 20 H760 l14 -22 l14 44 l12 -22 H1300"/>

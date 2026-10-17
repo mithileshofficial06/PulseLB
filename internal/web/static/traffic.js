@@ -11,7 +11,21 @@
   const cap = document.getElementById("simCaption");
   const x = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const C = { mint: "#3ddc97", blue: "#5b9dff", amber: "#ffc24b", red: "#ff5470", ink: "#e9eef6", muted: "#6b778a", line: "rgba(255,255,255,.08)" };
+  // Colours and shapes come from CSS variables, so the drawing follows the
+  // page's skin (smooth or brutal).
+  const C = {};
+  let RAD = 10, GLOW = 1;
+  function readTheme() {
+    const cs = getComputedStyle(document.documentElement);
+    const v = (n, d) => cs.getPropertyValue(n).trim() || d;
+    C.mint = v("--sim-ok", "#3ddc97"); C.blue = v("--sim-a", "#5b9dff"); C.amber = v("--sim-warn", "#ffc24b");
+    C.red = v("--sim-bad", "#ff5470"); C.node = v("--sim-node", "#3ddc97"); C.ink = v("--ink", "#e9eef6");
+    C.muted = v("--muted", "#6b778a"); C.surface = v("--surface-2", "#131a26");
+    RAD = +v("--sim-radius", "10"); GLOW = +v("--sim-glow", "1");
+    C.line = GLOW ? "rgba(255,255,255,.08)" : "rgba(242,239,230,.22)";
+  }
+  readTheme();
+  new MutationObserver(readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-skin"] });
 
   let W = 0, H = 0;
   const lb = { x: 0, y: 0 }, users = { x: 0, y: 0 };
@@ -156,8 +170,10 @@
       else [px, py] = curve(d.s, d.t, d.jitter);
       const col = d.stage === 1 && d.s.state === "down" ? C.red : d.stage === 1 && d.s.state === "slow" ? C.amber : d.hue > 0.5 ? C.mint : C.blue;
       x.fillStyle = col;
-      x.shadowColor = col; x.shadowBlur = 8;
-      x.beginPath(); x.arc(px, py, 2.4, 0, Math.PI * 2); x.fill();
+      x.shadowColor = col; x.shadowBlur = 8 * GLOW;
+      x.beginPath();
+      if (GLOW) x.arc(px, py, 2.4, 0, Math.PI * 2); else x.rect(px - 2.5, py - 2.5, 5, 5);
+      x.fill();
     }
     x.shadowBlur = 0;
 
@@ -173,18 +189,28 @@
     // load balancer
     const R = 26;
     const ring = (pulse % 1.6) / 1.6;
-    x.strokeStyle = `rgba(61,220,151,${0.6 * (1 - ring)})`; x.lineWidth = 2;
-    x.beginPath(); x.arc(lb.x, lb.y, R + ring * 22, 0, Math.PI * 2); x.stroke();
-    const g = x.createRadialGradient(lb.x - 8, lb.y - 8, 4, lb.x, lb.y, R);
-    g.addColorStop(0, "#9fffd6"); g.addColorStop(0.5, C.mint); g.addColorStop(1, "#1b5d73");
-    x.fillStyle = g; x.shadowColor = C.mint; x.shadowBlur = 26;
-    x.beginPath(); x.arc(lb.x, lb.y, R, 0, Math.PI * 2); x.fill();
-    x.shadowBlur = 0;
+    if (GLOW) {
+      x.strokeStyle = `rgba(61,220,151,${0.6 * (1 - ring)})`; x.lineWidth = 2;
+      x.beginPath(); x.arc(lb.x, lb.y, R + ring * 22, 0, Math.PI * 2); x.stroke();
+      const g = x.createRadialGradient(lb.x - 8, lb.y - 8, 4, lb.x, lb.y, R);
+      g.addColorStop(0, "#9fffd6"); g.addColorStop(0.5, C.mint); g.addColorStop(1, "#1b5d73");
+      x.fillStyle = g; x.shadowColor = C.mint; x.shadowBlur = 26;
+      x.beginPath(); x.arc(lb.x, lb.y, R, 0, Math.PI * 2); x.fill();
+      x.shadowBlur = 0;
+    } else {
+      // Brutal: a flat square with a hard shadow and an expanding square ring.
+      const k = R + ring * 18;
+      x.strokeStyle = C.node; x.globalAlpha = 1 - ring; x.lineWidth = 3;
+      x.strokeRect(lb.x - k, lb.y - k, k * 2, k * 2); x.globalAlpha = 1;
+      x.fillStyle = C.ink; x.fillRect(lb.x - R + 6, lb.y - R + 6, R * 2, R * 2);
+      x.fillStyle = C.node; x.fillRect(lb.x - R, lb.y - R, R * 2, R * 2);
+      x.strokeStyle = "#0c0c0c"; x.lineWidth = 3; x.strokeRect(lb.x - R, lb.y - R, R * 2, R * 2);
+    }
     x.strokeStyle = "#04140c"; x.lineWidth = 2.5; x.beginPath();
     const ex = lb.x - 14;
     x.moveTo(ex, lb.y); x.lineTo(ex + 7, lb.y); x.lineTo(ex + 11, lb.y - 9); x.lineTo(ex + 16, lb.y + 9); x.lineTo(ex + 20, lb.y); x.lineTo(ex + 28, lb.y); x.stroke();
-    x.fillStyle = C.ink; x.font = "600 12px 'Space Grotesk', system-ui";
-    x.fillText("PulseLB", lb.x, lb.y + R + 18);
+    x.fillStyle = C.ink; x.font = GLOW ? "600 12px 'Space Grotesk', system-ui" : "12px 'Archivo Black', 'Arial Black', sans-serif";
+    x.fillText(GLOW ? "PulseLB" : "PULSELB", lb.x, lb.y + R + 18);
 
     // servers
     const cw = Math.min(150, W * 0.36), ch = 44;
@@ -193,20 +219,24 @@
       if (s.alpha < 0.02) continue;
       const px = s.x, py = s.y - ch / 2, col = stateColor(s);
       x.globalAlpha = s.alpha;
-      rr(px, py, cw, ch, 10);
-      x.fillStyle = s.state === "down" ? "rgba(255,84,112,.10)" : "rgba(19,26,38,.95)";
+      if (!GLOW) { x.fillStyle = s.state === "down" ? C.red : s.state === "slow" ? C.amber : C.ink; x.fillRect(px + 5, py + 5, cw, ch); }
+      rr(px, py, cw, ch, RAD);
+      x.fillStyle = s.state === "down" ? (GLOW ? "rgba(255,84,112,.10)" : "#2a0d0d") : (GLOW ? "rgba(19,26,38,.95)" : C.surface);
       x.fill();
-      x.strokeStyle = s.flash > 0 ? `rgba(255,84,112,${0.4 + s.flash * 0.6})` : s.state === "slow" ? "rgba(255,194,75,.55)" : "rgba(255,255,255,.12)";
-      x.lineWidth = s.flash > 0 ? 2 : 1;
+      x.strokeStyle = !GLOW ? C.ink : s.flash > 0 ? `rgba(255,84,112,${0.4 + s.flash * 0.6})` : s.state === "slow" ? "rgba(255,194,75,.55)" : "rgba(255,255,255,.12)";
+      x.lineWidth = GLOW ? (s.flash > 0 ? 2 : 1) : 3;
       if (s.flash > 0) { x.shadowColor = C.red; x.shadowBlur = 20 * s.flash; }
       x.stroke(); x.shadowBlur = 0;
-      x.fillStyle = col; x.shadowColor = col; x.shadowBlur = 10;
-      x.beginPath(); x.arc(px + 13, py + 15, 3.5, 0, Math.PI * 2); x.fill(); x.shadowBlur = 0;
+      x.fillStyle = col; x.shadowColor = col; x.shadowBlur = 10 * GLOW;
+      x.beginPath();
+      if (GLOW) x.arc(px + 13, py + 15, 3.5, 0, Math.PI * 2); else x.rect(px + 9, py + 11, 8, 8);
+      x.fill(); x.shadowBlur = 0;
       x.fillStyle = C.ink; x.font = `600 ${cw < 120 ? 10 : 12}px 'Space Grotesk', system-ui`;
       x.fillText(s.name, px + 23, py + 19);
       const share = s.rate / totalRate;
-      x.fillStyle = "rgba(255,255,255,.08)"; rr(px + 12, py + 29, cw - 58, 5, 2.5); x.fill();
-      if (share > 0.003) { x.fillStyle = col; rr(px + 12, py + 29, Math.max(4, (cw - 58) * Math.min(1, share * 2)), 5, 2.5); x.fill(); }
+      const bh = GLOW ? 5 : 7, br = GLOW ? 2.5 : 0;
+      x.fillStyle = "rgba(255,255,255,.1)"; rr(px + 12, py + 28, cw - 58, bh, br); x.fill();
+      if (share > 0.003) { x.fillStyle = col; rr(px + 12, py + 28, Math.max(4, (cw - 58) * Math.min(1, share * 2)), bh, br); x.fill(); }
       x.fillStyle = C.muted; x.font = "500 10px 'JetBrains Mono', monospace"; x.textAlign = "right";
       x.fillText(s.state === "down" ? "DOWN" : `${Math.round(share * 100)}%`, px + cw - 10, py + 34);
       x.textAlign = "left";

@@ -45,6 +45,15 @@
   .offline { display: none; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255, 84, 112, .5); background: rgba(255, 84, 112, .12); margin-bottom: 16px; }
   .section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 4px 0 12px; flex-wrap: wrap; }
 </style>
+<link rel="stylesheet" href="brutal.css">
+<script>
+  // Pick the skin before first paint: brutal by default, remembered per browser.
+  (function () {
+    var s = "brutal";
+    try { s = localStorage.getItem("pulselb-skin") || s; } catch (e) {}
+    document.documentElement.dataset.skin = s;
+  })();
+</script>
 </head>
 <body data-page="dashboard">
 <nav class="topnav">

@@ -189,10 +189,10 @@ class TimeChart {
         // the line itself, with a glow
         path();
         x.strokeStyle = col;
-        x.lineWidth = 2;
+        x.lineWidth = +cssVar(host, "--chart-line") || 2;
         x.lineJoin = "round";
         x.shadowColor = col;
-        x.shadowBlur = 10;
+        x.shadowBlur = +cssVar(host, "--chart-glow") || 0;
         x.setLineDash(s.dash ? [5, 4] : []);
         x.stroke();
         x.shadowBlur = 0;
@@ -311,4 +311,25 @@ const LEVEL_ICON = { info: "•", good: "✓", warn: "▲", crit: "✕" };
     c.style.setProperty("--mx", `${e.clientX - r.left}px`);
     c.style.setProperty("--my", `${e.clientY - r.top}px`);
   }, { passive: true });
+})();
+
+// ---- skin toggle: BRUTAL / SMOOTH, remembered per browser ----
+(() => {
+  const links = document.querySelector(".topnav .links");
+  if (!links) return;
+  const root = document.documentElement;
+  const btn = document.createElement("button");
+  btn.className = "skin-btn";
+  const label = () => {
+    const brutal = root.dataset.skin === "brutal";
+    btn.textContent = brutal ? "◐ Smooth" : "■ Brutal";
+    btn.title = brutal ? "Switch to the smooth dark theme" : "Switch to the brutalist theme";
+  };
+  btn.addEventListener("click", () => {
+    root.dataset.skin = root.dataset.skin === "brutal" ? "smooth" : "brutal";
+    try { localStorage.setItem("pulselb-skin", root.dataset.skin); } catch (e) { /* private mode */ }
+    label();
+  });
+  label();
+  links.insertBefore(btn, links.querySelector(".guide-btn"));
 })();
