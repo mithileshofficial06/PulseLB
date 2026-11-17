@@ -6,9 +6,9 @@ explains every decision in plain English, and proves all of it in a live race ag
 
 ![PulseLB landing page with the live routing simulation](docs/img/landing.png)
 
-🎬 **Demo video (4:26):** [demo-video/pulselb-demo.mp4](demo-video/pulselb-demo.mp4): the landing page, the Control room breaking and healing servers live, and a full Race Mode run against round robin.
+**Demo video (4:26):** [demo-video/pulselb-demo.mp4](demo-video/pulselb-demo.mp4): the landing page, the Control room breaking and healing servers live, and a full Race Mode run against round robin.
 
-📸 **Screenshots:** [docs/shots/](docs/shots/), covering the loading screen, landing page, Control room, decision journal and a full race (retake them with `python scripts/shots.py` while the demo runs).
+**Screenshots:** [docs/shots/](docs/shots/), covering the loading screen, landing page, Control room, decision journal and a full race (retake them with `python scripts/shots.py` while the demo runs).
 
 ## Results at a glance
 
